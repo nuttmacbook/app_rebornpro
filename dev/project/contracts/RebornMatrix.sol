@@ -10,22 +10,19 @@ pragma solidity 0.8.37;
  *   transferWallet(to)      moves the caller's whole account to a new wallet
  *
  * Owner:
- *   placeFree(accounts, pkg) free IDs for the project's investors, under the root, only before launchPublic()
- *   launchPublic()          opens sign-ups for everyone; free placement is closed for good
+ *   registerFor(accounts, s) paid sign-ups for other wallets (the owner pays), one after another, any time
+ *   launchPublic()          opens sign-ups and upgrades to everyone
  *   addPackage(price)       a new package at the end of the upgrade path (its board starts with the root)
  *   setPackageOpen(pkg, on) pause or resume sales of one package
  *
- * Where a new ID goes: the shallowest open slot, left to right (openDepth), below an ID of one member, picked the
- * same way for every kind of entry by PLACEMENT in settings:
- *   MIXED    that member's IDs in order (1, 1.1, 1.2 ...): each takes new IDs until its first two levels
- *            (3 + 9 slots) are full, then the next ID takes over
- *   CURRENT  that member's newest ID          FIRST  that member's first ID, spilling down the whole team
+ * Where a new ID goes: the shallowest open slot, left to right (openDepth), below an ID of one member, the same
+ * way for every kind of entry: that member's IDs in order (1, 1.1, 1.2 ...), each taking new IDs until its first two
+ * levels (3 + 9 slots) are full, then the next ID takes over.
  * Whose IDs:
  *   - sign-up            the sponsor's (package 1)
  *   - upgrade            the nearest sponsor up the line who holds this package (only to find a place:
  *                        the referral share still goes to the member's own sponsor)
  *   - reborn             the member's own, so it stays inside the member's team
- *   - free (investors)   the root's
  *
  * Money of every paid entry (new, upgrade or reborn), split by which slot it takes on the board above:
  *   referral share  -> the member's sponsor from sign-up, always (the root has none: company wallets)
@@ -33,12 +30,18 @@ pragma solidity 0.8.37;
  *   cash share      -> owner of the board above (slot 1: 60%, slots 2 and 3: 10%)
  *   reborn share    -> kept on the board above (slots 2 and 3: 50% each); at 3 filled slots it is exactly one
  *                      price and pays that member's next ID (Reborn), placed through the queue
- * Free entries move no money. A board completed with less than one price kept is reborn for free, and what
+ * Every entry is paid. A board completed with less than one price kept (only possible through rounding of the
+ * reborn shares on a price that does not divide evenly) is reborn for free, and what
  * it did keep goes to the company wallets.
  * Anything else for the company (the root's own referral share, money a board kept but did not use, rounding) is split
  * between the three company wallets in the same proportion as their shares; rounding dust goes to the treasury.
  *
- * No settings are written in this file: token, wallets, prices, percentages and modes come from
+ * Two contracts, one storage: RebornMatrix (behind the proxy) does everything that writes; every read the website uses
+ * lives in RebornViews, which RebornMatrix runs on its own storage (delegatecall from fallback). Both inherit
+ * RebornStorage, so the layout is the same by construction. Splitting keeps RebornMatrix under the 24,576 byte limit,
+ * and the owner can swap RebornViews (setViews) without upgrading the proxy.
+ *
+ * No settings are written in this file: token, wallets, prices and percentages come from
  * dev/settings/contracts/RebornMatrix.env and are passed to initialize() when the contract is deployed.
  *
  * Money rule: the contract only holds the reborn money kept on boards and the price of waiting paid
@@ -65,24 +68,52 @@ contract RebornConstant {
     uint256 constant MAX_PACKAGES = 32;
     uint256 constant TREE_NODES = 13;          // nodes returned by getBoardView: 3 levels (1 + 3 + 9)
     uint256 constant MAX_PAGE = 100;           // rows per page in list views
-    uint256 constant MAX_FREE = 50;            // accounts one placeFree() may take
+    uint256 constant MAX_BATCH = 20;           // accounts one registerFor() may take: stays under the 16,777,216 gas cap per tx (EIP-7825)
     uint256 constant AUTO = type(uint256).max; // "pick for me" in getBoardView
 
     // Kind of an ID (Position.kind, Job.kind)
     uint8 constant SIGN_UP = 0;
     uint8 constant UPGRADE = 1;
     uint8 constant REBORN = 2;
-    uint8 constant FREE = 3;
-
-    // PLACEMENT
-    uint8 constant PLACE_CURRENT = 0;
-    uint8 constant PLACE_FIRST = 1;
-    uint8 constant PLACE_MIXED = 2;
 
     // History rows (HistoryRow.kind). A new ID of the member, a referral share, or a slot below one of the member's IDs.
     uint8 constant H_NEW_ID = 0;
     uint8 constant H_REFERRAL = 1;
     uint8 constant H_SLOT = 2;
+
+    /* ------------------------------------ errors (custom errors keep the contract small; the name says why) */
+
+    error OnlyOwner(); // "Only Owner"
+    error AlreadyInitialized(); // "Already Initialized"
+    error ZeroAddress(); // "Zero Address"
+    error RootAndCompanyMustDiffer(); // "Root And Company Must Differ"
+    error TokenIsNotAContract(); // "Token Is Not A Contract"
+    error PackageCount(); // "Package Count"
+    error ZeroPrice(); // "Zero Price"
+    error SlotSplitMustBe100(); // "Slot Split Must Be 100"
+    error RebornMustAddTo100(); // "Reborn Must Add To 100"
+    error CompanyWallets(); // "Company Wallets"
+    error StepsPerTx(); // "Steps Per Tx"
+    error NotLaunched(); // "Not Launched"
+    error AlreadyLaunched(); // "Already Launched"
+    error AlreadyRegistered(); // "Already Registered"
+    error UnknownSponsor(); // "Unknown Sponsor"
+    error PaymentFailed(); // "Payment Failed"
+    error NotAMember(); // "Not A Member"
+    error UnknownPackage(); // "Unknown Package"
+    error PackageClosed(); // "Package Closed"
+    error AlreadyHasPackage(); // "Already Has Package"
+    error NeedsThePackageBefore(); // "Needs The Package Before"
+    error QueueIsEmpty(); // "Queue Is Empty"
+    error ZeroSteps(); // "Zero Steps"
+    error AlreadyAMember(); // "Already A Member"
+    error BatchCount(); // "Batch Count"
+    error NoRecipients(); // "No Recipients"
+    error NothingToSend(); // "Nothing To Send"
+    error ZeroRecipient(); // "Zero Recipient"
+    error TransferFailed(); // "Transfer Failed"
+    error UnknownPosition(); // "Unknown Position"
+    error ViewsIsNotAContract(); // "Views Is Not A Contract"
 }
 
 contract RebornStorage is RebornConstant {
@@ -111,7 +142,7 @@ contract RebornStorage is RebornConstant {
         uint64 parent;          // index of the ID above (the root points at itself)
         uint8 filled;           // 0..3 slots below are taken
         uint8 openDepth;        // levels down to the nearest open slot (0 = this ID has one)
-        uint8 kind;             // SIGN_UP, UPGRADE, REBORN or FREE
+        uint8 kind;             // SIGN_UP, UPGRADE or REBORN
         uint64[3] kids;         // index in each slot (valid below `filled`)
         uint256 fund;           // reborn money kept on this board
     }
@@ -121,18 +152,18 @@ contract RebornStorage is RebornConstant {
      *   word 0: time (40 bits) | block (40) | kind (8) | pkg (8) | slot (8) | idKind (8) | other (64) | index (64)
      *   word 1: ref (64) | amount (96) | extra (96)
      * H_NEW_ID   index = the new ID, ref = ID above it, slot = slot it took, other = owner of the ID above,
-     *            amount = price paid (sign-up/upgrade from the wallet, reborn from the money kept, 0 when free),
-     *            extra = board that completed (reborn only). idKind = SIGN_UP, UPGRADE, REBORN or FREE.
+     *            amount = price paid (sign-up/upgrade by the wallet or the owner, reborn from the money kept, 0 when unfunded),
+     *            extra = board that completed (reborn only). idKind = SIGN_UP, UPGRADE or REBORN.
      * H_REFERRAL other = the person invited, index = their new ID, amount = referral paid, idKind = kind of that ID.
      * H_SLOT     index = the member's ID, slot = slot filled, other/ref = who and which ID took it, amount = cash paid,
-     *            extra = kept for Reborn, idKind = kind of the ID that took it (free and unfunded reborn pay nothing).
+     *            extra = kept for Reborn, idKind = kind of the ID that took it (an unfunded reborn pays nothing).
      * Packed by hand: the same rows as structs made the contract too big for the 24,576 byte limit.
      */
 
     struct Job {
         uint8 pkg;
         uint8 kind;
-        bool isPaid;            // false for free IDs and unfunded reborns
+        bool isPaid;            // false only for an unfunded reborn
         uint64 member;
         uint256 from;           // board that completed (reborn only)
     }
@@ -144,7 +175,6 @@ contract RebornStorage is RebornConstant {
         uint256[] companyBps;   // per company wallet: product, marketing, treasury
         uint256[] cashBps;      // per slot
         uint256[] rebornBps;    // per slot, must add up to 100%
-        uint256 placement;  // PLACE_CURRENT, PLACE_FIRST or PLACE_MIXED
         uint256 stepsPerTx;
     }
 
@@ -160,7 +190,6 @@ contract RebornStorage is RebornConstant {
     uint16[3] _companyShareBps;
     uint16[3] _cashBps;
     uint16[3] _rebornBps;
-    uint8 _placement;
     uint16 _stepsPerTx;
 
     uint8 _packageCount;
@@ -185,157 +214,19 @@ contract RebornStorage is RebornConstant {
     uint256 _totalReferral;
     uint256 _totalBoardPaid;
     uint256 _totalCompany;
-    uint256 _totalFree;         // free IDs placed
 
-    // PLACE_MIXED: per member and package, the position in _memberPositions of the ID now taking new IDs.
+    // Per member and package: the position in _memberPositions of the ID now taking new IDs.
     // It only moves forward: once an ID's first two levels are full they stay full.
     mapping (uint64 => mapping (uint8 => uint256)) _cursor;
 
     // Each member's history, oldest first, two words per row (it follows the member id, so transferWallet keeps it)
     mapping (uint64 => uint256[]) _history;
+
+    // RebornViews: where fallback() sends every read this contract does not have itself
+    address _views;
 }
 
 contract RebornMatrix is RebornStorage {
-    /* ------------------------------------ views (one struct per page) */
-
-    struct PackageInfo {
-        uint256 pkg;
-        uint256 price;
-        bool isOpen;
-        uint256 positions;
-        uint256 completed;
-        uint256 members;
-        uint256 cyclePay;       // cash one completed board pays its owner
-        uint256 referralPay;    // referral one entry pays the sponsor
-    }
-
-    struct MyPackage {
-        bool has;
-        uint256 count;          // IDs the viewer holds
-        uint256 latestIndex;
-        uint256 latestFilled;
-        uint256 latestFund;
-        uint256 firstIndex;
-    }
-
-    struct HomeView {
-        address token;
-        string tokenSymbol;
-        uint8 tokenDecimals;
-        bool launched;
-        uint256 memberCount;
-        uint256 queued;
-        uint256 totalIn;
-        uint256 totalReferral;
-        uint256 totalBoardPaid;
-        uint256 totalCompany;
-        uint256 totalHeld;
-        PackageInfo[] packages;
-        uint256 refId;
-        bool refValid;
-        address refAccount;
-        bool isMember;
-        bool isOwner;
-        uint256 myId;
-        uint256 mySponsor;
-        uint256 myDirects;
-        uint256 myPositions;
-        uint256 myCycles;
-        uint256 myReferralEarned;
-        uint256 myBoardEarned;
-        uint256 myJoinedAt;
-        uint256 walletBalance;
-        uint256 allowance;
-        MyPackage[] mine;
-    }
-
-    struct PlanView {
-        string tokenSymbol;
-        uint8 tokenDecimals;
-        uint256 referralBps;
-        uint256[] companyBps;
-        uint256[] cashBps;
-        uint256[] rebornBps;
-        uint256 placement;
-        uint256 memberCount;
-        bool launched;
-        PackageInfo[] packages;
-    }
-
-    struct Node {
-        bool exists;
-        uint256 index;
-        uint256 member;
-        address account;
-        uint256 filled;
-        uint256 kind;
-        uint256 createdAt;
-    }
-
-    struct BoardView {
-        string tokenSymbol;
-        uint8 tokenDecimals;
-        uint256 packageCount;
-        uint256 pkg;
-        uint256 price;
-        uint256 positionCount;
-        uint256 focus;
-        uint256 parent;         // AUTO when the focus is the root
-        Node[] nodes;           // level order: node k has its children at 3k+1, 3k+2, 3k+3
-        uint256 viewerId;
-        uint256 myTotal;
-        uint256[] myIndices;
-        uint256[] myKinds;
-        uint256[] myCounts;     // viewer's IDs in each package
-        uint256[] prices;
-    }
-
-    struct Direct {
-        uint256 id;
-        address account;
-        uint256 joinedAt;
-        uint256 directs;
-        uint256 positions;
-        uint256 packages;       // how many packages this person holds
-    }
-
-    struct TeamView {
-        uint256 myId;
-        uint256 sponsorId;
-        address sponsorAccount;
-        uint256 directsTotal;
-        Direct[] directs;
-    }
-
-    struct HistoryView {
-        string tokenSymbol;
-        uint8 tokenDecimals;
-        uint256 memberId;
-        address account;
-        uint256 sponsor;
-        uint256 joinedAt;
-        uint256 referralEarned;
-        uint256 boardEarned;
-        uint256 cycles;
-        uint256[] prices;       // price of each package (names on the page)
-        uint256 total;          // rows stored for this member
-        uint256[] rows;         // two words per row, newest row first, starting `offset` rows from the newest
-    }
-
-    struct OwnerView {
-        address owner;
-        address[3] companies;   // product, marketing, treasury
-        address root;
-        bool launched;
-        uint256 stepsPerTx;
-        uint256 queued;
-        uint256 totalFree;
-        uint256 packageCount;
-        uint256 maxPackages;
-        uint256 lastPrice;
-        uint256 bnbHeld;
-    }
-
     /* ------------------------------------ events */
 
     event Registered(uint256 indexed id, address indexed account, uint256 indexed sponsor);
@@ -353,40 +244,7 @@ contract RebornMatrix is RebornStorage {
     event WalletTransferred(uint256 indexed member, address indexed previousWallet, address indexed newWallet);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event SentOutETH(address indexed by, uint256 recipients, uint256 share, uint256 total);
-
-    /* ------------------------------------ errors (custom errors keep the contract small; the name says why) */
-
-    error OnlyOwner(); // "Only Owner"
-    error AlreadyInitialized(); // "Already Initialized"
-    error ZeroAddress(); // "Zero Address"
-    error RootAndCompanyMustDiffer(); // "Root And Company Must Differ"
-    error TokenIsNotAContract(); // "Token Is Not A Contract"
-    error PackageCount(); // "Package Count"
-    error ZeroPrice(); // "Zero Price"
-    error SlotSplitMustBe100(); // "Slot Split Must Be 100"
-    error RebornMustAddTo100(); // "Reborn Must Add To 100"
-    error CompanyWallets(); // "Company Wallets"
-    error Placement(); // "Link Placement"
-    error StepsPerTx(); // "Steps Per Tx"
-    error NotLaunched(); // "Not Launched"
-    error AlreadyLaunched(); // "Already Launched"
-    error AlreadyRegistered(); // "Already Registered"
-    error UnknownSponsor(); // "Unknown Sponsor"
-    error PaymentFailed(); // "Payment Failed"
-    error NotAMember(); // "Not A Member"
-    error UnknownPackage(); // "Unknown Package"
-    error PackageClosed(); // "Package Closed"
-    error AlreadyHasPackage(); // "Already Has Package"
-    error NeedsThePackageBefore(); // "Needs The Package Before"
-    error QueueIsEmpty(); // "Queue Is Empty"
-    error ZeroSteps(); // "Zero Steps"
-    error AlreadyAMember(); // "Already A Member"
-    error FreeCount(); // "Free Count"
-    error NoRecipients(); // "No Recipients"
-    error NothingToSend(); // "Nothing To Send"
-    error ZeroRecipient(); // "Zero Recipient"
-    error TransferFailed(); // "Transfer Failed"
-    error UnknownPosition(); // "Unknown Position"
+    event ViewsChanged(address indexed previousViews, address indexed newViews);
 
     modifier onlyOwner() {
         _onlyOwner();
@@ -398,8 +256,8 @@ contract RebornMatrix is RebornStorage {
     }
 
     /** Runs once, inside the proxy's constructor. plan_.prices[i] is package i + 1. */
-    /** companies_ = product, marketing, treasury wallets (3, none of them the root) */
-    function initialize(address owner_, address token_, address root_, address[] calldata companies_, PlanInput calldata plan_) public payable {
+    /** companies_ = product, marketing, treasury wallets (3, none of them the root); views_ = RebornViews */
+    function initialize(address owner_, address token_, address root_, address[] calldata companies_, address views_, PlanInput calldata plan_) public payable {
         if (_initialized) revert AlreadyInitialized();
         if (owner_ == ZERO || root_ == ZERO) revert ZeroAddress();
         if (companies_.length != COMPANY_WALLETS) revert CompanyWallets();
@@ -411,13 +269,12 @@ contract RebornMatrix is RebornStorage {
         if (token_.code.length == 0) revert TokenIsNotAContract();
         uint256 count = plan_.prices.length;
         if (count == 0 || count > MAX_PACKAGES) revert PackageCount();
-        if (plan_.placement > PLACE_MIXED) revert Placement();
         if (plan_.stepsPerTx == 0 || plan_.stepsPerTx > type(uint16).max) revert StepsPerTx();
 
         _initialized = true;
         _owner = owner_;
         _token = IRebornToken(token_);
-        _placement = uint8(plan_.placement);
+        _setViews(views_);
         _stepsPerTx = uint16(plan_.stepsPerTx);
         _setSplit(plan_);
 
@@ -455,18 +312,36 @@ contract RebornMatrix is RebornStorage {
 
     receive() external payable { }
 
+    /** Reads this contract does not have (page views, small getters) run in RebornViews on this storage */
+    fallback() external payable {
+        address target = _views;
+        assembly {
+            calldatacopy(0, 0, calldatasize())
+            let ok := delegatecall(gas(), target, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            switch ok
+            case 0 { revert(0, returndatasize()) }
+            default { return(0, returndatasize()) }
+        }
+    }
+
     /* ------------------------------------ what members do */
 
     /** Joins package 1 under `sponsorId`. Pays the package 1 price (approve it first). */
     function register(uint256 sponsorId) public payable {
         if (!_launched) revert NotLaunched();
-        if (_idOf[msg.sender] != 0) revert AlreadyRegistered();
+        _signUp(msg.sender, sponsorId);
+        _process(_stepsPerTx);
+    }
+
+    /** A paid sign-up of `account` into package 1 under `sponsorId`; the caller pays the price */
+    function _signUp(address account, uint256 sponsorId) private {
+        if (account == ZERO) revert ZeroAddress();
+        if (_isCompany(account)) revert RootAndCompanyMustDiffer();
+        if (_idOf[account] != 0) revert AlreadyRegistered();
         if (sponsorId == 0 || sponsorId > _memberCount) revert UnknownSponsor();
         if (!_packages[1].isOpen) revert PackageClosed();
-
-        uint64 id = _newMember(msg.sender, uint64(sponsorId));
-        _buy(id, 1, SIGN_UP);
-        _process(_stepsPerTx);
+        _buy(_newMember(account, uint64(sponsorId)), 1, SIGN_UP);
     }
 
     /** Buys package `pkg` with the wallet (approve its price first). Needs package pkg - 1. */
@@ -535,32 +410,22 @@ contract RebornMatrix is RebornStorage {
     /* ------------------------------------ what the owner does */
 
     /**
-     * Free IDs for investors, under the root of package `pkg`, before launch only. New accounts become members
-     * with the root as sponsor. Each account gets the package once (like buying it).
+     * Paid sign-ups made by the owner for `accounts` (new wallets), package 1 under `sponsorId`, before or after
+     * launch. The owner wallet pays package 1's price for each (approve price x count first); the money is split
+     * exactly like a member's own sign-up, and the sponsor gets the referral share of every later entry.
+     * Each wallet is placed (with any Reborn it causes) before the next one signs up, so the boards end up exactly
+     * as if the wallets had called register() one after another, in list order.
      */
-    function placeFree(address[] calldata accounts, uint256 pkg) public payable onlyOwner {
-        if (_launched) revert AlreadyLaunched();
-        if (pkg == 0 || pkg > _packageCount) revert UnknownPackage();
+    function registerFor(address[] calldata accounts, uint256 sponsorId) public payable onlyOwner {
         uint256 count = accounts.length;
-        if (count == 0 || count > MAX_FREE) revert FreeCount();
-        uint8 p = uint8(pkg);
+        if (count == 0 || count > MAX_BATCH) revert BatchCount();
         for (uint256 i; i < count; i++) {
-            address account = accounts[i];
-            if (account == ZERO) revert ZeroAddress();
-            if (_isCompany(account)) revert RootAndCompanyMustDiffer();
-            uint64 id = _idOf[account];
-            if (id == 0) id = _newMember(account, 1);
-            if (_hasPackage[id][p]) revert AlreadyHasPackage();
-            _hasPackage[id][p] = true;
-            _packages[p].members += 1;
-            _totalFree += 1;
-            emit PackageBought(id, p, 0, FREE);
-            _pushJob(p, FREE, false, id, 0);
+            _signUp(accounts[i], sponsorId);
+            _process(_stepsPerTx);
         }
-        _process(_stepsPerTx);
     }
 
-    /** Opens sign-ups to everyone. One way: free placement is closed for good. */
+    /** Opens sign-ups and upgrades to everyone. One way. */
     function launchPublic() public payable onlyOwner {
         if (_launched) revert AlreadyLaunched();
         _launched = true;
@@ -615,6 +480,17 @@ contract RebornMatrix is RebornStorage {
     /** Wallet of member #1 (the root): its board pay and referral share go here from now on */
     function setRootWallet(address root_) public payable onlyOwner {
         _moveWallet(1, root_);
+    }
+
+    /** Swaps the read-only RebornViews (it must share RebornStorage: deploy it from this same file) */
+    function setViews(address views_) public payable onlyOwner {
+        _setViews(views_);
+    }
+
+    function _setViews(address views_) private {
+        if (views_.code.length == 0) revert ViewsIsNotAContract();
+        emit ViewsChanged(_views, views_);
+        _views = views_;
     }
 
     function transferOwnership(address newOwner) public payable onlyOwner {
@@ -743,11 +619,10 @@ contract RebornMatrix is RebornStorage {
 
     /**
      * The ID a new one goes below: one of whose IDs (the sponsor's, the nearest sponsor's up the line who holds the
-     * package, the member's own, or the root's), then which of them by PLACEMENT (_entryOf).
+     * package, or the member's own), then which of them (_entryOf).
      */
     function _entryPoint(Job memory job) private returns (uint256) {
         if (job.kind == REBORN) return _entryOf(job.member, job.pkg);
-        if (job.kind == FREE) return _entryOf(1, job.pkg);
         uint64 sponsor = _members[job.member].sponsor;
         if (job.kind == UPGRADE) {
             while (sponsor != 0 && _memberPositions[sponsor][job.pkg].length == 0) sponsor = _members[sponsor].sponsor;
@@ -756,8 +631,8 @@ contract RebornMatrix is RebornStorage {
     }
 
     /**
-     * Which of `member`'s IDs in `pkg`. PLACE_FIRST: the first. PLACE_CURRENT: the newest. PLACE_MIXED: the first ID,
-     * in order, that still has an open slot within two levels (openDepth 0 or 1, so 3 + 9 slots); the newest when none has.
+     * Which of `member`'s IDs in `pkg`: the first ID, in order, that still has an open slot within two levels
+     * (openDepth 0 or 1, so 3 + 9 slots); the newest when none has.
      * The cursor only moves forward, so over the life of the contract each ID is stepped past once.
      * Jobs run in order, so the member's first ID is always placed already; the top of the board is a safe fallback.
      */
@@ -765,8 +640,6 @@ contract RebornMatrix is RebornStorage {
         uint256[] storage list = _memberPositions[member][pkg];
         uint256 count = list.length;
         if (count == 0) return 0;
-        if (_placement == PLACE_FIRST) return list[0];
-        if (_placement == PLACE_CURRENT) return list[count - 1];
         mapping (uint256 => Position) storage tree = _positions[pkg];
         uint256 idx = _cursor[member][pkg];
         uint256 start = idx;
@@ -857,10 +730,175 @@ contract RebornMatrix is RebornStorage {
         if (!_token.transfer(to, amount)) revert TransferFailed();
     }
 
-    /* ------------------------------------ reading: small views */
+    /* ------------------------------------ reading (the rest is in RebornViews) */
 
     function owner() public view returns (address) { return _owner; }
     function token() public view returns (address) { return address(_token); }
+    function views() public view returns (address) { return _views; }
+}
+
+/**
+ * Every read of RebornMatrix that the website uses, run by RebornMatrix's fallback with delegatecall, so it reads the
+ * proxy's storage (address(this) is the proxy too). Called directly it only sees its own empty storage. It has no
+ * function that writes; anything added here must stay read-only.
+ */
+contract RebornViews is RebornStorage {
+    /* ------------------------------------ one struct per page */
+
+    struct PackageInfo {
+        uint256 pkg;
+        uint256 price;
+        bool isOpen;
+        uint256 positions;
+        uint256 completed;
+        uint256 members;
+        uint256 cyclePay;       // cash one completed board pays its owner
+        uint256 referralPay;    // referral one entry pays the sponsor
+    }
+
+    struct MyPackage {
+        bool has;
+        uint256 count;          // IDs the viewer holds
+        uint256 latestIndex;
+        uint256 latestFilled;
+        uint256 latestFund;
+        uint256 firstIndex;
+    }
+
+    struct HomeView {
+        address token;
+        string tokenSymbol;
+        uint8 tokenDecimals;
+        bool launched;
+        uint256 memberCount;
+        uint256 queued;
+        uint256 totalIn;
+        uint256 totalReferral;
+        uint256 totalBoardPaid;
+        uint256 totalCompany;
+        uint256 totalHeld;
+        PackageInfo[] packages;
+        uint256 refId;
+        bool refValid;
+        address refAccount;
+        bool isMember;
+        bool isOwner;
+        uint256 myId;
+        uint256 mySponsor;
+        uint256 myDirects;
+        uint256 myPositions;
+        uint256 myCycles;
+        uint256 myReferralEarned;
+        uint256 myBoardEarned;
+        uint256 myJoinedAt;
+        uint256 walletBalance;
+        uint256 allowance;
+        MyPackage[] mine;
+    }
+
+    struct PlanView {
+        string tokenSymbol;
+        uint8 tokenDecimals;
+        uint256 referralBps;
+        uint256[] companyBps;
+        uint256[] cashBps;
+        uint256[] rebornBps;
+        uint256 memberCount;
+        bool launched;
+        PackageInfo[] packages;
+    }
+
+    struct Node {
+        bool exists;
+        uint256 index;
+        uint256 member;
+        address account;
+        uint256 filled;
+        uint256 kind;
+        uint256 createdAt;
+    }
+
+    struct BoardView {
+        string tokenSymbol;
+        uint8 tokenDecimals;
+        uint256 packageCount;
+        uint256 pkg;
+        uint256 price;
+        uint256 positionCount;
+        uint256 focus;
+        uint256 parent;         // AUTO when the focus is the root
+        Node[] nodes;           // level order: node k has its children at 3k+1, 3k+2, 3k+3
+        uint256 viewerId;
+        uint256 myTotal;
+        uint256[] myIndices;
+        uint256[] myKinds;
+        uint256[] myCounts;     // viewer's IDs in each package
+        uint256[] prices;
+        Detail detail;          // more about the focus ID and its owner
+    }
+
+    /** The focus ID's money and its owner's numbers, for the board page's detail panel */
+    struct Detail {
+        uint256 fund;           // kept on this board for its Reborn so far
+        uint256[3] cashBps;     // what each slot pays the owner in cash
+        uint256[3] rebornBps;   // what each slot keeps for the Reborn
+        uint256 sponsor;        // owner's sponsor (member id, 0 for the root)
+        address sponsorAccount;
+        uint256 ownerIds;       // owner's IDs in this package
+        uint256 ownerCycles;    // boards the owner completed, all packages
+        uint256 ownerDirects;
+        uint256 ownerJoinedAt;
+        uint256 ownerBoardEarned;
+        uint256 ownerReferralEarned;
+    }
+
+    struct Direct {
+        uint256 id;
+        address account;
+        uint256 joinedAt;
+        uint256 directs;
+        uint256 positions;
+        uint256 packages;       // how many packages this person holds
+    }
+
+    struct TeamView {
+        uint256 myId;
+        uint256 sponsorId;
+        address sponsorAccount;
+        uint256 directsTotal;
+        Direct[] directs;
+    }
+
+    struct HistoryView {
+        string tokenSymbol;
+        uint8 tokenDecimals;
+        uint256 memberId;
+        address account;
+        uint256 sponsor;
+        uint256 joinedAt;
+        uint256 referralEarned;
+        uint256 boardEarned;
+        uint256 cycles;
+        uint256[] prices;       // price of each package (names on the page)
+        uint256 total;          // rows stored for this member
+        uint256[] rows;         // two words per row, newest row first, starting `offset` rows from the newest
+    }
+
+    struct OwnerView {
+        address owner;
+        address[3] companies;   // product, marketing, treasury
+        address root;
+        bool launched;
+        uint256 stepsPerTx;
+        uint256 queued;
+        uint256 packageCount;
+        uint256 maxPackages;
+        uint256 lastPrice;
+        uint256 bnbHeld;
+    }
+
+    /* ------------------------------------ reading: small views */
+
     function launched() public view returns (bool) { return _launched; }
     function idOf(address account) public view returns (uint256) { return _idOf[account]; }
     function memberCount() public view returns (uint256) { return _memberCount; }
@@ -871,7 +909,7 @@ contract RebornMatrix is RebornStorage {
     function positionsOf(uint256 id, uint256 pkg) public view returns (uint256[] memory) { return _memberPositions[uint64(id)][uint8(pkg)]; }
 
     /** companyBps: product, marketing, treasury */
-    function getSettings() public view returns (uint256 referralBps, uint256[] memory companyBps, uint256[] memory cashBps, uint256[] memory rebornBps, uint256 placement, uint256 stepsPerTx) {
+    function getSettings() public view returns (uint256 referralBps, uint256[] memory companyBps, uint256[] memory cashBps, uint256[] memory rebornBps, uint256 stepsPerTx) {
         companyBps = new uint256[](COMPANY_WALLETS);
         for (uint256 i; i < COMPANY_WALLETS; i++) companyBps[i] = _companyShareBps[i];
         cashBps = new uint256[](SLOTS);
@@ -880,12 +918,9 @@ contract RebornMatrix is RebornStorage {
             cashBps[s] = _cashBps[s];
             rebornBps[s] = _rebornBps[s];
         }
-        return (_referralBps, companyBps, cashBps, rebornBps, _placement, _stepsPerTx);
+        return (_referralBps, companyBps, cashBps, rebornBps, _stepsPerTx);
     }
 
-    function getTotals() public view returns (uint256 held, uint256 paidIn, uint256 referral, uint256 boardPaid, uint256 company, uint256 free) {
-        return (_totalHeld, _totalIn, _totalReferral, _totalBoardPaid, _totalCompany, _totalFree);
-    }
 
     /* ------------------------------------ reading: page views */
 
@@ -966,7 +1001,7 @@ contract RebornMatrix is RebornStorage {
     function getPlanView() public view returns (PlanView memory v) {
         v.tokenSymbol = _token.symbol();
         v.tokenDecimals = _token.decimals();
-        (v.referralBps, v.companyBps, v.cashBps, v.rebornBps, v.placement, ) = getSettings();
+        (v.referralBps, v.companyBps, v.cashBps, v.rebornBps, ) = getSettings();
         v.memberCount = _memberCount;
         v.launched = _launched;
         v.packages = _packageInfos();
@@ -1005,6 +1040,25 @@ contract RebornMatrix is RebornStorage {
         v.focus = index;
         v.parent = index == 0 ? AUTO : _positions[p][index].parent;
         v.nodes = _subtree(p, index);
+        v.detail = _detail(p, index);
+    }
+
+    function _detail(uint8 pkg, uint256 index) private view returns (Detail memory d) {
+        Position storage spot = _positions[pkg][index];
+        Member storage owner_ = _members[spot.member];
+        d.fund = spot.fund;
+        for (uint256 s; s < 3; s++) {
+            d.cashBps[s] = _cashBps[s];
+            d.rebornBps[s] = _rebornBps[s];
+        }
+        d.sponsor = owner_.sponsor;
+        d.sponsorAccount = _members[owner_.sponsor].account;
+        d.ownerIds = _memberPositions[spot.member][pkg].length;
+        d.ownerCycles = owner_.cycles;
+        d.ownerDirects = owner_.directs;
+        d.ownerJoinedAt = owner_.joinedAt;
+        d.ownerBoardEarned = owner_.boardEarned;
+        d.ownerReferralEarned = owner_.referralEarned;
     }
 
     /** Rows of a page: `limit` (at most MAX_PAGE) from `offset`, fewer at the end of the list */
@@ -1097,7 +1151,6 @@ contract RebornMatrix is RebornStorage {
         v.launched = _launched;
         v.stepsPerTx = _stepsPerTx;
         v.queued = _jobTail - _jobHead;
-        v.totalFree = _totalFree;
         v.packageCount = _packageCount;
         v.maxPackages = MAX_PACKAGES;
         v.lastPrice = _packages[_packageCount].price;

@@ -6,12 +6,11 @@
  */
 
 const SLOTS = 3;
-const KIND = { SIGN_UP: 0, UPGRADE: 1, REBORN: 2, FREE: 3 };
-const PLACE = { CURRENT: 0, FIRST: 1, MIXED: 2 };
+const KIND = { SIGN_UP: 0, UPGRADE: 1, REBORN: 2 };
 
 class RebornModel {
     /**
-     * @param {object} plan  { prices: bigint[], referralBps, companyBps, cashBps: bigint[3], rebornBps: bigint[3], placement, stepsPerTx }
+     * @param {object} plan  { prices: bigint[], referralBps, companyBps, cashBps: bigint[3], rebornBps: bigint[3], stepsPerTx }
      * @param {string} root     root wallet
      * @param {string[]} companies  product, marketing, treasury wallets
      */
@@ -56,18 +55,14 @@ class RebornModel {
         return id;
     }
 
+    /** registerFor(accounts, sponsorId) by the owner: like register() for each wallet, one after another */
+    registerFor(accounts, sponsor) {
+        return accounts.map((account) => this.register(account, sponsor));
+    }
+
     upgrade(account, pkg) {
         const id = this.idOf.get(account.toLowerCase());
         this.buy(id, pkg, KIND.UPGRADE);
-        this.process(this.steps);
-    }
-
-    placeFree(accounts, pkg) {
-        for (const account of accounts) {
-            const id = this.idOf.get(account.toLowerCase()) ?? this.newMember(account, 1);
-            this.members[id].packages.add(pkg);
-            this.queue.push({ pkg, kind: KIND.FREE, isPaid: false, member: id, from: 0 });
-        }
         this.process(this.steps);
     }
 
@@ -92,10 +87,9 @@ class RebornModel {
         this.paid.set(account, (this.paid.get(account) ?? 0n) + amount);
     }
 
-    /** Whose IDs a new one goes below: reborn -> own, free -> root, upgrade -> nearest sponsor holding the package */
+    /** Whose IDs a new one goes below: reborn -> own, upgrade -> nearest sponsor holding the package, sign-up -> sponsor */
     entryPoint(job) {
         if (job.kind === KIND.REBORN) return this.entryOf(job.member, job.pkg);
-        if (job.kind === KIND.FREE) return this.entryOf(1, job.pkg);
         let sponsor = this.members[job.member].sponsor;
         if (job.kind === KIND.UPGRADE) {
             while (sponsor !== 0 && !this.mine[sponsor][job.pkg].length) sponsor = this.members[sponsor].sponsor;
@@ -103,7 +97,7 @@ class RebornModel {
         return this.entryOf(sponsor === 0 ? 1 : sponsor, job.pkg);
     }
 
-    /** Which of `member`'s IDs, by the placement mode */
+    /** Which of `member`'s IDs: in order, each until its first two levels are full (like the contract) */
     /** Company money split by the product / marketing / treasury shares; the treasury takes the rounding */
     toCompanies(amount) {
         const shares = this.plan.companyBps;
@@ -119,9 +113,6 @@ class RebornModel {
     entryOf(member, pkg) {
         const list = this.mine[member][pkg];
         if (!list.length) return 0;
-        const mode = Number(this.plan.placement);
-        if (mode === PLACE.FIRST) return list[0];
-        if (mode === PLACE.CURRENT) return list[list.length - 1];
         // MIXED: first ID in order with an open slot within two levels (checked by walking, not openDepth)
         const key = `${member}:${pkg}`;
         let at = this.cursor.get(key) ?? 0;
@@ -201,4 +192,4 @@ class RebornModel {
     }
 }
 
-export { RebornModel, KIND, PLACE, SLOTS };
+export { RebornModel, KIND, SLOTS };

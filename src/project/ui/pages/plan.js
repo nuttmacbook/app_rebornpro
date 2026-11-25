@@ -56,15 +56,11 @@ const plates = (data) => /*html*/`
     </div>
 `;
 
-/** How a new ID finds its place, by the contract's placement mode (0 newest ID, 1 first ID, 2 IDs in order) */
-const placementText = (data) => [
-    t("It goes below that person's newest ID, left slot first."),
-    t("It goes below that person's first ID, in the shallowest open slot of the team, left first."),
-    t("It goes below that person's IDs in order: ID 1 takes people until its 3 + 9 slots are full, then 1.1, then 1.2 and so on, left first."),
-][data.placement] ?? "";
+/** How a new ID finds its place (the contract's one placement rule) */
+const placementText = () => t("It goes below that person's IDs in order: ID 1 takes people until its 3 + 9 slots are full, then 1.1, then 1.2 and so on, left first.");
 
 const steps = (data) => [
-    [ t("Join through a link"), `${t("You go on the board of the person who invited you.")} ${placementText(data)}` ],
+    [ t("Join through a link"), `${t("You go on the board of the person who invited you.")} ${placementText()}` ],
     [ t("Slots fill and pay"), t("Every slot that fills below your ID pays you at once, straight to your wallet.") ],
     [ t("The board is reborn"), t("At three filled slots, the money kept from slots 2 and 3 is exactly one price. It buys your next ID inside your own team, placed the same way.") ],
     [ t("Move up a package"), t("Each package is its own board. Buy the next one once you hold the one before. Your new ID goes on the board of the nearest person above you who has that package, placed the same way.") ],

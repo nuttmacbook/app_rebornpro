@@ -9,7 +9,7 @@
 import "./main.css";
 import { t, setLang } from "../lang";
 import { startApp, openWallet } from "../../engine/ui/app";
-import { getHomeData, getPlanData, getBoardData, getTeamData, getHistoryData, getOwnerData, register, upgrade, processQueue, transferWallet, placeFree, launchPublic, addPackage, setPackageOpen } from "../chain";
+import { getHomeData, getPlanData, getBoardData, getTeamData, getHistoryData, getOwnerData, register, upgrade, processQueue, transferWallet, registerFor, launchPublic, addPackage, setPackageOpen } from "../chain";
 import { header } from "./componants/nav";
 import { mountBackdrop } from "./componants/backdrop";
 import { isMaintenance, showMaintenance } from "./componants/maintenance";
@@ -152,6 +152,18 @@ window.doUpgrade = (pkg) => {
 
 window.doProcessQueue = () => app.runTx(processQueue, { title: "Placed", desc: "The waiting IDs are on their boards." });
 
+/** Copy button next to a short address: the full address goes to the clipboard */
+window.copyAddress = async (value, button) => {
+    try {
+        await navigator.clipboard.writeText(value);
+        notify.success({ title: "Address copied", desc: value });
+    } catch (err) {
+        console.error(err);
+        notify.error(new Error("Could not copy. Hover the address to see it in full."));
+    }
+    button?.blur?.();
+};
+
 window.copyRefLink = async () => {
     const link = document.querySelector("[data-ref-link]")?.textContent?.trim() ?? "";
     try {
@@ -197,14 +209,16 @@ window.doTransferWallet = () => {
 
 /* ------------------------------------ owner */
 
-window.doPlaceFree = () => {
-    const text = document.querySelector("[data-free-wallets]")?.value ?? "";
-    const pkg = Number(document.querySelector("[data-free-package]")?.value ?? 1);
-    app.runTx((wallet, options) => placeFree(wallet, { ...options, text, pkg }), { title: "Free IDs placed", desc: "The investors' IDs are on the board below the root." });
+window.doRegisterFor = () => {
+    const text = document.querySelector("[data-paid-wallets]")?.value ?? "";
+    const typed = String(document.querySelector("[data-paid-sponsor]")?.value ?? "").trim();
+    const sponsorId = typed ? parseMember(typed) : 1;
+    if (!sponsorId) return notify.error(new Error("That sponsor does not exist."));
+    app.runTx((wallet, options) => registerFor(wallet, { ...options, text, sponsorId }), { title: "Signed up", desc: "The new members are on the board below their sponsor." });
 };
 
 window.doLaunch = () => {
-    if (!document.querySelector("[data-launch-sure]")?.checked) return notify.error(new Error("Tick the box first: launching closes free placement for good."));
+    if (!document.querySelector("[data-launch-sure]")?.checked) return notify.error(new Error("Tick the box first: launching opens sign-ups to everyone and cannot be undone."));
     app.runTx(launchPublic, { title: "Launched", desc: "Sign-ups are open to everyone." });
 };
 

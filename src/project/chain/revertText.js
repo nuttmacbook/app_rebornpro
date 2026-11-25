@@ -12,7 +12,7 @@ const TEXT = {
     ZeroPrice: "Enter a price above zero.",
     StepsPerTx: "Choose a number of placements above zero.",
     NotLaunched: "Sign-ups are not open yet.",
-    AlreadyLaunched: "The plan is already launched: free IDs can no longer be placed.",
+    AlreadyLaunched: "The plan is already launched.",
     AlreadyRegistered: "This wallet has already joined.",
     UnknownSponsor: "That sponsor does not exist.",
     PaymentFailed: "The token payment did not go through. Check your balance and the approval.",
@@ -24,7 +24,7 @@ const TEXT = {
     QueueIsEmpty: "Nothing is waiting to be placed any more.",
     ZeroSteps: "Choose how many placements to process.",
     AlreadyAMember: "The new wallet already has an account. Use a wallet that has never joined.",
-    FreeCount: "Place between 1 and 50 free IDs at a time.",
+    BatchCount: "Use between 1 and 20 wallets at a time.",
     TransferFailed: "A token transfer failed.",
     UnknownPosition: "That ID does not exist in this package.",
 };

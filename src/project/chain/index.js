@@ -11,4 +11,4 @@ export { register } from "./intereacts/register";
 export { upgrade } from "./intereacts/upgrade";
 export { processQueue } from "./intereacts/processQueue";
 export { transferWallet } from "./intereacts/transferWallet";
-export { placeFree, launchPublic, addPackage, setPackageOpen, parseAddresses, toUnits } from "./intereacts/owner";
+export { registerFor, launchPublic, addPackage, setPackageOpen, parseAddresses, toUnits } from "./intereacts/owner";

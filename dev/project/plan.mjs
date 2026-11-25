@@ -4,6 +4,7 @@
  */
 
 import { ethers } from "ethers";
+import fs from "node:fs";
 
 const fail = (key, why) => { throw new Error(`dev/settings/contracts/RebornMatrix.env: ${key} ${why}`); };
 
@@ -14,8 +15,6 @@ const bps = (key, text) => {
     if (!/^\d+(\.\d{1,2})?$/.test(text)) fail(key, `has "${text}", expected a percent like 30 or 2.5.`);
     return Math.round(Number(text) * 100);
 };
-
-const PLACE = { CURRENT: 0, FIRST: 1, MIXED: 2 };
 
 // The company share is split between these wallets, in this order (the contract's order too)
 const COMPANY_KEYS = [ "PRODUCT", "MARKETING", "TREASURY" ];
@@ -47,9 +46,6 @@ function planOf(s) {
     });
     if (reborn.reduce((a, b) => a + b, 0) !== 10_000) fail("SLOT_REBORN_PERCENT", "must add up to 100.");
 
-    const placement = PLACE[String(s.PLACEMENT).toUpperCase()];
-    if (placement === undefined) fail("PLACEMENT", `has "${s.PLACEMENT}", expected MIXED, CURRENT or FIRST.`);
-
     const steps = Number(s.STEPS_PER_TX);
     if (!Number.isInteger(steps) || steps < 1) fail("STEPS_PER_TX", "must be a whole number above 0.");
 
@@ -61,9 +57,33 @@ function planOf(s) {
         companyBps: companies.map(BigInt),
         cashBps: cash.map(BigInt),
         rebornBps: reborn.map(BigInt),
-        placement: BigInt(placement),
         stepsPerTx: BigInt(steps),
     };
 }
 
-export { planOf, PLACE, COMPANY_KEYS, companyWalletsOf };
+const LAUNCH_FILE = new URL("../settings/launch.json", import.meta.url);
+
+/**
+ * dev/settings/launch.json, checked: owner, paid sign-up wallets (in order) and their sponsor.
+ * Stops with the file name when an address is wrong, repeats, or is the root or a company wallet.
+ */
+function launchOf(s) {
+    const fail2 = (why) => { throw new Error(`dev/settings/launch.json: ${why}`); };
+    const raw = JSON.parse(fs.readFileSync(LAUNCH_FILE, "utf8"));
+    const addr = (a, where) => { try { return ethers.getAddress(a); } catch { return fail2(`${where} has "${a}", not a wallet address (check the letters).`); } };
+    const owner = addr(raw.owner, "owner");
+    const paid = (raw.paidSignUps?.wallets ?? []).map((a) => addr(a, "paidSignUps"));
+    const sponsor = Number(raw.paidSignUps?.sponsor ?? 1);
+    const taken = new Set([ s.ROOT_WALLET, ...companyWalletsOf(s) ].map((a) => a.toLowerCase()));
+    const seen = new Set();
+    for (const a of paid) {
+        if (taken.has(a.toLowerCase())) fail2(`${a} is the root or a company wallet (RebornMatrix.env).`);
+        if (seen.has(a.toLowerCase())) fail2(`${a} is listed twice.`);
+        seen.add(a.toLowerCase());
+    }
+    if (paid.length > 20) fail2("at most 20 wallets (one registerFor transaction; split the list in the Owner page if you need more).");
+    if (!Number.isInteger(sponsor) || sponsor < 1) fail2("paidSignUps.sponsor must be a member id (1 = root).");
+    return { owner, paid, sponsor };
+}
+
+export { planOf, launchOf, COMPANY_KEYS, companyWalletsOf };

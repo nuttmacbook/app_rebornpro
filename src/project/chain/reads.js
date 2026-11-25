@@ -9,6 +9,7 @@ import { cachedRead } from "../../engine/chain/cache";
 import { metered } from "../../engine/chain/rpcMeter";
 import { toHomeView, toPlanView, toBoardView, toTeamView, toOwnerView, toHistoryView } from "./viewParse";
 import { RebornContract } from "../../generated/contracts/rebornmatrix";
+import { RebornViewsContract } from "../../generated/contracts/rebornviews";
 
 // getBoardView: "open the viewer's newest ID in this package (or the root)"
 const AUTO_POSITION = (1n << 256n) - 1n;
@@ -16,7 +17,9 @@ const BOARD_PAGE = 24n;
 const TEAM_PAGE = 20n;
 const HISTORY_PAGE = 50n;
 
-const matrix = () => metered(box.createWeb3Contract(RebornContract, readRpc()), "RebornMatrix");
+// Page views live in RebornViews but are called at the RebornMatrix address (its fallback runs them on its storage)
+const READS = { address: RebornContract.address, abi: RebornViewsContract.abi };
+const matrix = () => metered(box.createWeb3Contract(READS, readRpc()), "RebornMatrix");
 const whoOf = (account) => (account ?? box.ZERO).toLowerCase();
 /** Whole number ≥ 0 from a link parameter, or the fallback */
 const wholeOr = (value, fallback) => (/^\d+$/.test(String(value ?? "")) ? BigInt(value) : fallback);

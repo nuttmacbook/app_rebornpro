@@ -1,5 +1,5 @@
 import { t } from "../../lang";
-import { moneyText, WRAP, pageHead, button, pager, errorBox, loadingBox, escape } from "../componants/parts";
+import { money, moneyText, dateOf, address, WRAP, pageHead, button, pager, errorBox, loadingBox, escape } from "../componants/parts";
 import { positionLabel, memberLabel, isMasked } from "../componants/ids";
 import { KINDS, kindOf, packageName } from "../componants/ring";
 
@@ -72,19 +72,83 @@ const tree = (data) => {
     return `<svg viewBox="0 0 ${W} 390" class="w-full" role="img" aria-label="${t("The board below the chosen ID")}">${lines}${drawn}</svg>`;
 };
 
+/** One label / value line of the detail panel (value is HTML: escape text before passing it) */
+const fact = (label, value) => /*html*/`
+    <div class="flex items-center justify-between gap-3 py-2.5">
+        <dt class="shrink-0 text-[13px] text-cinder">${label}</dt>
+        <dd class="min-w-0 text-right font-display text-[15px] font-semibold text-bone">${value}</dd>
+    </div>`;
+
+const group = (title, rows, extra = "") => /*html*/`
+    <div class="plate min-w-0 p-5 sm:p-6">
+        <h2 class="font-display text-lg font-semibold text-bone">${title}</h2>
+        <dl class="mt-2 divide-y divide-seam">${rows.join("")}</dl>
+        ${extra}
+    </div>`;
+
+const COPY_ICON = `<svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>`;
+
+/** Short address with a copy button (the full address goes to the clipboard) */
+const ownerAddress = (account) => /*html*/`
+    <span class="inline-flex items-center gap-1.5">
+        <span class="figure" title="${escape(account)}">${escape(address(account))}</span>
+        <button type="button" onclick="copyAddress('${escape(account)}', this)" aria-label="${t("Copy address")}" title="${t("Copy address")}"
+            class="grid size-7 place-items-center rounded-md border border-seam text-cinder hover:border-ember hover:text-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-flame">${COPY_ICON}</button>
+    </span>`;
+
+/** Who took each of the 3 slots and what that slot paid the owner (cash) and kept (Reborn) */
+const slotRows = (data, top) => [ 0, 1, 2 ].map((s) => {
+    const kid = data.nodes[1 + s];
+    const cash = data.price * BigInt(data.detail.cashBps[s] ?? 0) / 10_000n;
+    const kept = data.price * BigInt(data.detail.rebornBps[s] ?? 0) / 10_000n;
+    const value = s < top.filled && kid?.exists
+        ? `<button type="button" onclick="openBoard(${data.pkg}, ${kid.index})" class="underline decoration-seam underline-offset-4 hover:text-flame">${escape(positionLabel(data.pkg, kid.index))}</button>
+           <span class="block text-[12px] font-medium text-cinder">+${escape(moneyText(data, cash))}${kept > 0n ? ` · ${t("kept")} ${escape(moneyText(data, kept))}` : ""}</span>`
+        : `<span class="text-cinder">${t("Open")}</span>`;
+    return fact(t("Slot {slot}", { slot: s + 1 }), value);
+});
+
+/** The chosen ID and its owner, below the board */
+const details = (data) => {
+    const top = data.nodes[0];
+    if (!top?.exists) return "";
+    const d = data.detail;
+    const cashSoFar = d.cashBps.slice(0, top.filled).reduce((sum, b) => sum + data.price * BigInt(b) / 10_000n, 0n);
+    return /*html*/`
+        <section class="grid gap-6 lg:grid-cols-2">
+            ${group(t("ID {id}", { id: escape(positionLabel(data.pkg, top.index)) }), [
+                fact(t("Came from"), escape(top.index === 0 ? t("Top of the board") : t(kindOf(top.kind).label))),
+                fact(t("Placed"), escape(dateOf(top.createdAt))),
+                fact(t("Slots filled"), `${top.filled} / 3`),
+                ...slotRows(data, top),
+                fact(t("Paid to the owner"), money(data, cashSoFar)),
+                fact(t("Kept for Reborn"), `${money(data, d.fund)}<span class="block text-[12px] font-medium text-cinder">${t("of {price}", { price: escape(moneyText(data, data.price, 0)) })}</span>`),
+            ])}
+            ${group(t("Owner"), [
+                fact(t("Wallet"), ownerAddress(top.account)),
+                fact(t("Member"), escape(memberLabel(top.member))),
+                fact(t("Invited by"), d.sponsor ? `<span title="${escape(d.sponsorAccount)}">${escape(memberLabel(d.sponsor))}</span>` : `<span class="text-cinder">–</span>`),
+                fact(t("Joined"), escape(dateOf(d.ownerJoinedAt))),
+                fact(t("IDs in {name}", { name: escape(packageName(data, data.pkg)) }), String(d.ownerIds)),
+                fact(t("Boards reborn"), String(d.ownerCycles)),
+                fact(t("People invited"), String(d.ownerDirects)),
+                fact(t("Board pay"), money(data, d.ownerBoardEarned)),
+                fact(t("Referral pay"), money(data, d.ownerReferralEarned)),
+            ], `<button type="button" onclick="historyLookup('${escape(top.account)}')" class="mt-4 text-[13px] text-cinder underline decoration-seam underline-offset-4 hover:text-bone">${t("Open the owner's history")}</button>`)}
+        </section>
+    `;
+};
+
 const side = (data) => {
     const top = data.nodes[0];
-    const facts = top?.exists ? [
-        [ t("ID"), positionLabel(data.pkg, top.index) ],
-        [ t("Member"), memberLabel(top.member) ],
-        [ t("Came from"), top.index === 0 ? t("Top of the board") : t(kindOf(top.kind).label) ],
-        [ t("Slots filled"), `${top.filled} of 3` ],
-    ] : [];
     return /*html*/`
         <div class="flex min-w-0 flex-col gap-5">
+            ${top?.exists ? /*html*/`
             <dl class="divide-y divide-seam border-y border-seam">
-                ${facts.map(([ k, v ]) => `<div class="flex items-baseline justify-between gap-3 py-2.5"><dt class="text-[13px] text-cinder">${k}</dt><dd class="font-display text-[15px] font-semibold text-bone">${escape(v)}</dd></div>`).join("")}
-            </dl>
+                ${fact(t("ID"), escape(positionLabel(data.pkg, top.index)))}
+                ${fact(t("Owner"), ownerAddress(top.account))}
+                ${fact(t("Slots filled"), `${top.filled} / 3`)}
+            </dl>` : ""}
             <div class="grid grid-cols-3 gap-2">
                 ${button(t("Top"), `openBoard(${data.pkg}, 0)`, { kind: "line", size: "sm", isDisabled: data.focus === 0 })}
                 ${button(t("Up"), `openBoard(${data.pkg}, ${data.parent ?? 0})`, { kind: "line", size: "sm", isDisabled: data.parent === null })}
@@ -126,6 +190,7 @@ const board = (data) => /*html*/`
             ${side(data)}
             <div class="plate min-w-0 p-3 sm:p-5"><div class="overflow-x-auto"><div class="min-w-[580px]">${tree(data)}</div></div></div>
         </section>
+        ${details(data)}
         <section class="flex flex-col gap-3">
             <h2 class="font-display text-xl font-semibold text-bone">${t("Your IDs in {name}", { name: packageName(data, data.pkg) })}${data.myTotal ? ` <span class="text-cinder">(${data.myTotal})</span>` : ""}</h2>
             ${myIds(data)}

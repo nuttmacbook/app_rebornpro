@@ -26,7 +26,7 @@ export const RebornContract = {
         },
         {
             "inputs": [],
-            "name": "FreeCount",
+            "name": "BatchCount",
             "type": "error"
         },
         {
@@ -101,6 +101,11 @@ export const RebornContract = {
         },
         {
             "inputs": [],
+            "name": "ViewsIsNotAContract",
+            "type": "error"
+        },
+        {
+            "inputs": [],
             "name": "ZeroAddress",
             "type": "error"
         },
@@ -128,775 +133,8 @@ export const RebornContract = {
             "type": "function"
         },
         {
-            "inputs": [
-                {
-                    "internalType": "address",
-                    "name": "viewer",
-                    "type": "address"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "pkg",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "index",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "offset",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "limit",
-                    "type": "uint256"
-                }
-            ],
-            "name": "getBoardView",
-            "outputs": [
-                {
-                    "components": [
-                        {
-                            "internalType": "string",
-                            "name": "tokenSymbol",
-                            "type": "string"
-                        },
-                        {
-                            "internalType": "uint8",
-                            "name": "tokenDecimals",
-                            "type": "uint8"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "packageCount",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "pkg",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "price",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "positionCount",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "focus",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "parent",
-                            "type": "uint256"
-                        },
-                        {
-                            "components": [
-                                {
-                                    "internalType": "bool",
-                                    "name": "exists",
-                                    "type": "bool"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "index",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "member",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "address",
-                                    "name": "account",
-                                    "type": "address"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "filled",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "kind",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "createdAt",
-                                    "type": "uint256"
-                                }
-                            ],
-                            "internalType": "struct RebornMatrix.Node[]",
-                            "name": "nodes",
-                            "type": "tuple[]"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "viewerId",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "myTotal",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256[]",
-                            "name": "myIndices",
-                            "type": "uint256[]"
-                        },
-                        {
-                            "internalType": "uint256[]",
-                            "name": "myKinds",
-                            "type": "uint256[]"
-                        },
-                        {
-                            "internalType": "uint256[]",
-                            "name": "myCounts",
-                            "type": "uint256[]"
-                        },
-                        {
-                            "internalType": "uint256[]",
-                            "name": "prices",
-                            "type": "uint256[]"
-                        }
-                    ],
-                    "internalType": "struct RebornMatrix.BoardView",
-                    "name": "v",
-                    "type": "tuple"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "address",
-                    "name": "account",
-                    "type": "address"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "offset",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "limit",
-                    "type": "uint256"
-                }
-            ],
-            "name": "getHistoryView",
-            "outputs": [
-                {
-                    "components": [
-                        {
-                            "internalType": "string",
-                            "name": "tokenSymbol",
-                            "type": "string"
-                        },
-                        {
-                            "internalType": "uint8",
-                            "name": "tokenDecimals",
-                            "type": "uint8"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "memberId",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "address",
-                            "name": "account",
-                            "type": "address"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "sponsor",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "joinedAt",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "referralEarned",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "boardEarned",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "cycles",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256[]",
-                            "name": "prices",
-                            "type": "uint256[]"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "total",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256[]",
-                            "name": "rows",
-                            "type": "uint256[]"
-                        }
-                    ],
-                    "internalType": "struct RebornMatrix.HistoryView",
-                    "name": "v",
-                    "type": "tuple"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "address",
-                    "name": "viewer",
-                    "type": "address"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "refId",
-                    "type": "uint256"
-                }
-            ],
-            "name": "getHomeView",
-            "outputs": [
-                {
-                    "components": [
-                        {
-                            "internalType": "address",
-                            "name": "token",
-                            "type": "address"
-                        },
-                        {
-                            "internalType": "string",
-                            "name": "tokenSymbol",
-                            "type": "string"
-                        },
-                        {
-                            "internalType": "uint8",
-                            "name": "tokenDecimals",
-                            "type": "uint8"
-                        },
-                        {
-                            "internalType": "bool",
-                            "name": "launched",
-                            "type": "bool"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "memberCount",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "queued",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "totalIn",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "totalReferral",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "totalBoardPaid",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "totalCompany",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "totalHeld",
-                            "type": "uint256"
-                        },
-                        {
-                            "components": [
-                                {
-                                    "internalType": "uint256",
-                                    "name": "pkg",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "price",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "bool",
-                                    "name": "isOpen",
-                                    "type": "bool"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "positions",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "completed",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "members",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "cyclePay",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "referralPay",
-                                    "type": "uint256"
-                                }
-                            ],
-                            "internalType": "struct RebornMatrix.PackageInfo[]",
-                            "name": "packages",
-                            "type": "tuple[]"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "refId",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "bool",
-                            "name": "refValid",
-                            "type": "bool"
-                        },
-                        {
-                            "internalType": "address",
-                            "name": "refAccount",
-                            "type": "address"
-                        },
-                        {
-                            "internalType": "bool",
-                            "name": "isMember",
-                            "type": "bool"
-                        },
-                        {
-                            "internalType": "bool",
-                            "name": "isOwner",
-                            "type": "bool"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "myId",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "mySponsor",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "myDirects",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "myPositions",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "myCycles",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "myReferralEarned",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "myBoardEarned",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "myJoinedAt",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "walletBalance",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "allowance",
-                            "type": "uint256"
-                        },
-                        {
-                            "components": [
-                                {
-                                    "internalType": "bool",
-                                    "name": "has",
-                                    "type": "bool"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "count",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "latestIndex",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "latestFilled",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "latestFund",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "firstIndex",
-                                    "type": "uint256"
-                                }
-                            ],
-                            "internalType": "struct RebornMatrix.MyPackage[]",
-                            "name": "mine",
-                            "type": "tuple[]"
-                        }
-                    ],
-                    "internalType": "struct RebornMatrix.HomeView",
-                    "name": "v",
-                    "type": "tuple"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "getOwnerView",
-            "outputs": [
-                {
-                    "components": [
-                        {
-                            "internalType": "address",
-                            "name": "owner",
-                            "type": "address"
-                        },
-                        {
-                            "internalType": "address[3]",
-                            "name": "companies",
-                            "type": "address[3]"
-                        },
-                        {
-                            "internalType": "address",
-                            "name": "root",
-                            "type": "address"
-                        },
-                        {
-                            "internalType": "bool",
-                            "name": "launched",
-                            "type": "bool"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "stepsPerTx",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "queued",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "totalFree",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "packageCount",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "maxPackages",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "lastPrice",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "bnbHeld",
-                            "type": "uint256"
-                        }
-                    ],
-                    "internalType": "struct RebornMatrix.OwnerView",
-                    "name": "v",
-                    "type": "tuple"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "getPlanView",
-            "outputs": [
-                {
-                    "components": [
-                        {
-                            "internalType": "string",
-                            "name": "tokenSymbol",
-                            "type": "string"
-                        },
-                        {
-                            "internalType": "uint8",
-                            "name": "tokenDecimals",
-                            "type": "uint8"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "referralBps",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256[]",
-                            "name": "companyBps",
-                            "type": "uint256[]"
-                        },
-                        {
-                            "internalType": "uint256[]",
-                            "name": "cashBps",
-                            "type": "uint256[]"
-                        },
-                        {
-                            "internalType": "uint256[]",
-                            "name": "rebornBps",
-                            "type": "uint256[]"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "placement",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "memberCount",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "bool",
-                            "name": "launched",
-                            "type": "bool"
-                        },
-                        {
-                            "components": [
-                                {
-                                    "internalType": "uint256",
-                                    "name": "pkg",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "price",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "bool",
-                                    "name": "isOpen",
-                                    "type": "bool"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "positions",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "completed",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "members",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "cyclePay",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "referralPay",
-                                    "type": "uint256"
-                                }
-                            ],
-                            "internalType": "struct RebornMatrix.PackageInfo[]",
-                            "name": "packages",
-                            "type": "tuple[]"
-                        }
-                    ],
-                    "internalType": "struct RebornMatrix.PlanView",
-                    "name": "v",
-                    "type": "tuple"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "address",
-                    "name": "viewer",
-                    "type": "address"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "offset",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "limit",
-                    "type": "uint256"
-                }
-            ],
-            "name": "getTeamView",
-            "outputs": [
-                {
-                    "components": [
-                        {
-                            "internalType": "uint256",
-                            "name": "myId",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "sponsorId",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "address",
-                            "name": "sponsorAccount",
-                            "type": "address"
-                        },
-                        {
-                            "internalType": "uint256",
-                            "name": "directsTotal",
-                            "type": "uint256"
-                        },
-                        {
-                            "components": [
-                                {
-                                    "internalType": "uint256",
-                                    "name": "id",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "address",
-                                    "name": "account",
-                                    "type": "address"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "joinedAt",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "directs",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "positions",
-                                    "type": "uint256"
-                                },
-                                {
-                                    "internalType": "uint256",
-                                    "name": "packages",
-                                    "type": "uint256"
-                                }
-                            ],
-                            "internalType": "struct RebornMatrix.Direct[]",
-                            "name": "directs",
-                            "type": "tuple[]"
-                        }
-                    ],
-                    "internalType": "struct RebornMatrix.TeamView",
-                    "name": "v",
-                    "type": "tuple"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
             "inputs": [],
             "name": "launchPublic",
-            "outputs": [],
-            "stateMutability": "payable",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "address[]",
-                    "name": "accounts",
-                    "type": "address[]"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "pkg",
-                    "type": "uint256"
-                }
-            ],
-            "name": "placeFree",
             "outputs": [],
             "stateMutability": "payable",
             "type": "function"
@@ -923,6 +161,24 @@ export const RebornContract = {
                 }
             ],
             "name": "register",
+            "outputs": [],
+            "stateMutability": "payable",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "address[]",
+                    "name": "accounts",
+                    "type": "address[]"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "sponsorId",
+                    "type": "uint256"
+                }
+            ],
+            "name": "registerFor",
             "outputs": [],
             "stateMutability": "payable",
             "type": "function"
@@ -993,6 +249,19 @@ export const RebornContract = {
             "inputs": [
                 {
                     "internalType": "address",
+                    "name": "views_",
+                    "type": "address"
+                }
+            ],
+            "name": "setViews",
+            "outputs": [],
+            "stateMutability": "payable",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "address",
                     "name": "newWallet",
                     "type": "address"
                 }
@@ -1013,6 +282,19 @@ export const RebornContract = {
             "name": "upgrade",
             "outputs": [],
             "stateMutability": "payable",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "views",
+            "outputs": [
+                {
+                    "internalType": "address",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
             "type": "function"
         }
     ],

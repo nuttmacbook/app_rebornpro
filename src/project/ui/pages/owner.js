@@ -1,9 +1,9 @@
 import { t } from "../../lang";
-import { money, address, WRAP, pageHead, blockHead, button, row, errorBox, loadingBox } from "../componants/parts";
+import { money, moneyText, address, WRAP, pageHead, blockHead, button, row, errorBox, loadingBox } from "../componants/parts";
 import { packageName } from "../componants/ring";
 
 /*
- * YOUR CODE (off-chain). Owner tools: free IDs for investors (before launch only), launch, new packages,
+ * YOUR CODE (off-chain). Owner tools: paid sign-ups for others, launch, new packages,
  * pausing a package. Anyone can open the page; only the owner wallet can send these transactions.
  */
 
@@ -14,7 +14,6 @@ const status = (data) => /*html*/`
             ${row(t("Owner"), `<span class="figure">${address(data.owner.owner)}</span>`)}
             ${row(t("Root wallet, member 1"), `<span class="figure">${address(data.owner.root)}</span>`)}
             ${[ t("Product wallet"), t("Marketing wallet"), t("Treasury wallet") ].map((label, i) => row(label, `<span class="figure">${address(data.owner.companies[i])}</span>`)).join("")}
-            ${row(t("Free IDs placed"), String(data.owner.totalFree))}
             ${row(t("Waiting to be placed"), String(data.owner.queued))}
             ${row(t("Placements per transaction"), String(data.owner.stepsPerTx))}
             ${row(t("Kept for reborns"), money(data, data.totalHeld))}
@@ -22,18 +21,16 @@ const status = (data) => /*html*/`
     </div>
 `;
 
-const freeForm = (data) => /*html*/`
-    <div class="plate plate-hot p-5 sm:p-6">
-        ${blockHead(t("Free IDs for investors"), t("Before launch only"))}
-        <p class="mt-2 text-[14px] text-cinder">${t("Each wallet gets one ID in the package you pick, at the top of its board below the root, without paying. New wallets become members invited by the root. Up to 50 at a time.")}</p>
-        <label class="sr-only" for="free-wallets">${t("Investor wallets")}</label>
-        <textarea id="free-wallets" data-free-wallets rows="5" wrap="off" placeholder="0x…" spellcheck="false" class="field mt-4 text-[14px]"></textarea>
+const paidForm = (data) => /*html*/`
+    <div class="plate p-5 sm:p-6">
+        ${blockHead(t("Sign up others, paid"), t("{price} each", { price: moneyText(data, data.packages[0]?.price ?? 0n) }))}
+        <p class="mt-2 text-[14px] text-cinder">${t("New wallets join package 1 under the sponsor you choose, like a normal sign-up: the owner wallet pays the price for each, and the money is split the same way. The sponsor gets the referral pay of every later entry. Up to 20 at a time.")}</p>
+        <label class="sr-only" for="paid-wallets">${t("Wallets to sign up")}</label>
+        <textarea id="paid-wallets" data-paid-wallets rows="4" wrap="off" placeholder="0x…" spellcheck="false" class="field mt-4 text-[14px]"></textarea>
         <div class="mt-3 flex flex-col gap-3 sm:flex-row">
-            <label class="sr-only" for="free-package">${t("Package")}</label>
-            <select id="free-package" data-free-package class="field sm:w-56">
-                ${data.packages.map((p) => `<option value="${p.pkg}">${packageName(data, p.pkg)}</option>`).join("")}
-            </select>
-            ${button(t("Place free IDs"), "doPlaceFree()", { full: false })}
+            <label class="sr-only" for="paid-sponsor">${t("Sponsor ID")}</label>
+            <input id="paid-sponsor" data-paid-sponsor type="text" autocomplete="off" spellcheck="false" placeholder="${t("Sponsor ID (empty = root)")}" class="field min-w-0 sm:flex-1" />
+            ${button(t("Sign up and pay"), "doRegisterFor()", { full: false })}
         </div>
     </div>
 `;
@@ -41,8 +38,8 @@ const freeForm = (data) => /*html*/`
 const launchCard = /*html*/`
     <div class="plate p-5 sm:p-6">
         ${blockHead(t("Launch to everyone"), t("Cannot be undone"))}
-        <p class="mt-2 text-[14px] text-cinder">${t("Opens joining and upgrades to everyone. After this, free IDs can never be placed again.")}</p>
-        <label class="mt-4 flex items-center gap-3 text-[14px] text-cinder"><input data-launch-sure type="checkbox" class="size-4 accent-[#e8202e]" /> ${t("Every investor already has the free IDs they need.")}</label>
+        <p class="mt-2 text-[14px] text-cinder">${t("Opens joining and upgrades to everyone. It cannot be undone.")}</p>
+        <label class="mt-4 flex items-center gap-3 text-[14px] text-cinder"><input data-launch-sure type="checkbox" class="size-4 accent-[#e8202e]" /> ${t("The sign-ups the owner pays for are done.")}</label>
         <div class="mt-4">${button(t("Launch"), "doLaunch()", { full: false })}</div>
     </div>
 `;
@@ -76,7 +73,7 @@ const ownerPage = (data) => /*html*/`
     <main class="${WRAP} flex flex-col gap-6 py-10 sm:py-14">
         ${pageHead(t("Owner tools"), data.isOwner ? t("You are connected with the owner wallet.") : t("Only the owner wallet can use these. Connect it to continue."))}
         <div class="grid gap-6 lg:grid-cols-2">
-            <div class="flex flex-col gap-6">${data.owner.launched ? "" : freeForm(data)}${packagesCard(data)}</div>
+            <div class="flex flex-col gap-6">${paidForm(data)}${packagesCard(data)}</div>
             <div class="flex flex-col gap-6">${status(data)}${data.owner.launched ? "" : launchCard}</div>
         </div>
     </main>

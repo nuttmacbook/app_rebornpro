@@ -1,16 +1,59 @@
 {
-    "// how to use": "SETTINGS. file = where the ABI goes, export = name to import, only = functions/events/errors the app uses. Addresses come from src/generated/addresses.json by contract name, never from .env.",
+    "// how to use": "SETTINGS. file = where the ABI goes, export = name to import, only = functions/events/errors the app uses. Addresses come from src/generated/addresses.json by contract name, never from .env. RebornViews: only its ABI is used; the site calls it at the RebornMatrix address (RebornMatrix runs it on its own storage).",
     "RebornMatrix": {
         "file": "src/generated/contracts/rebornmatrix.js",
         "export": "RebornContract",
         "only": [
-            "register", "upgrade", "processQueue", "transferWallet",
-            "placeFree", "launchPublic", "addPackage", "setPackageOpen", "setStepsPerTx", "setCompanyWallet", "setRootWallet",
-            "getHomeView", "getPlanView", "getBoardView", "getTeamView", "getHistoryView", "getOwnerView",
-            "OnlyOwner", "ZeroAddress", "RootAndCompanyMustDiffer", "PackageCount", "ZeroPrice", "StepsPerTx",
-            "NotLaunched", "AlreadyLaunched", "AlreadyRegistered", "UnknownSponsor", "PaymentFailed", "NotAMember",
-            "UnknownPackage", "PackageClosed", "AlreadyHasPackage", "NeedsThePackageBefore", "QueueIsEmpty", "ZeroSteps",
-            "AlreadyAMember", "FreeCount", "TransferFailed", "UnknownPosition"
+            "register",
+            "upgrade",
+            "processQueue",
+            "transferWallet",
+            "registerFor",
+            "launchPublic",
+            "addPackage",
+            "setPackageOpen",
+            "setStepsPerTx",
+            "setCompanyWallet",
+            "setRootWallet",
+            "OnlyOwner",
+            "ZeroAddress",
+            "RootAndCompanyMustDiffer",
+            "PackageCount",
+            "ZeroPrice",
+            "StepsPerTx",
+            "NotLaunched",
+            "AlreadyLaunched",
+            "AlreadyRegistered",
+            "UnknownSponsor",
+            "PaymentFailed",
+            "NotAMember",
+            "UnknownPackage",
+            "PackageClosed",
+            "AlreadyHasPackage",
+            "NeedsThePackageBefore",
+            "QueueIsEmpty",
+            "ZeroSteps",
+            "AlreadyAMember",
+            "TransferFailed",
+            "UnknownPosition",
+            "setViews",
+            "views",
+            "ViewsIsNotAContract",
+            "BatchCount"
+        ]
+    },
+    "RebornViews": {
+        "file": "src/generated/contracts/rebornviews.js",
+        "export": "RebornViewsContract",
+        "only": [
+            "getHomeView",
+            "getPlanView",
+            "getBoardView",
+            "getTeamView",
+            "getHistoryView",
+            "getOwnerView",
+            "UnknownPackage",
+            "UnknownPosition"
         ]
     }
 }

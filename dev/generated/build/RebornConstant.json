@@ -2,7 +2,163 @@
     "contractName": "RebornConstant",
     "solc": "0.8.37",
     "source": "RebornMatrix.sol",
-    "abi": [],
-    "bytecode": "6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220253d62f5d4a82b2cf0c1a110b9d668a7c0337d9f1227eb4b2c52eb7ce8b7318864736f6c63430008250033",
-    "deployedBytecode": "6080604052600080fdfea2646970667358221220253d62f5d4a82b2cf0c1a110b9d668a7c0337d9f1227eb4b2c52eb7ce8b7318864736f6c63430008250033"
+    "abi": [
+        {
+            "inputs": [],
+            "name": "AlreadyAMember",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "AlreadyHasPackage",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "AlreadyInitialized",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "AlreadyLaunched",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "AlreadyRegistered",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "BatchCount",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "CompanyWallets",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "NeedsThePackageBefore",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "NoRecipients",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "NotAMember",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "NotLaunched",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "NothingToSend",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "OnlyOwner",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "PackageClosed",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "PackageCount",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "PaymentFailed",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "QueueIsEmpty",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "RebornMustAddTo100",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "RootAndCompanyMustDiffer",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "SlotSplitMustBe100",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "StepsPerTx",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "TokenIsNotAContract",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "TransferFailed",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "UnknownPackage",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "UnknownPosition",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "UnknownSponsor",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "ViewsIsNotAContract",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "ZeroAddress",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "ZeroPrice",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "ZeroRecipient",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "ZeroSteps",
+            "type": "error"
+        }
+    ],
+    "bytecode": "6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea26469706673582212205812eef5240a38163e334a63f57276d5f8d88c6df957abc52871ff9855bda20864736f6c63430008250033",
+    "deployedBytecode": "6080604052600080fdfea26469706673582212205812eef5240a38163e334a63f57276d5f8d88c6df957abc52871ff9855bda20864736f6c63430008250033"
 }
