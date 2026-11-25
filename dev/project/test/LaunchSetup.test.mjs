@@ -67,7 +67,7 @@ export default async function (t) {
     /* ------------------------------------ 2. then Launch, and a public sign-up works */
 
     await provider.send("hardhat_impersonateAccount", [ launch.owner ]);
-    await (await matrix.connect(await provider.getSigner(launch.owner)).launchPublic()).wait();
+    await (await matrix.connect(new ethers.JsonRpcSigner(provider, launch.owner)).launchPublic()).wait();
     await provider.send("hardhat_stopImpersonatingAccount", [ launch.owner ]);
     const person = await newPerson(provider);
     await (await token.connect(person).mint(person.address, price1)).wait();

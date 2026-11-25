@@ -86,7 +86,8 @@ async function goLiveSetup({ provider, deployed, launch, isLaunched = false }) {
     await setBalance(provider, launch.owner, 10);
     await provider.send("hardhat_impersonateAccount", [ launch.owner ]);
     try {
-        const owner = await provider.getSigner(launch.owner);
+        // Not provider.getSigner(): hardhat node does not list impersonated accounts in eth_accounts ("invalid account")
+        const owner = new ethers.JsonRpcSigner(provider, launch.owner);
         const asOwner = matrix.connect(owner);
         if (launch.paid.length) {
             const total = (await matrix.getPackage(1)).price * BigInt(launch.paid.length);

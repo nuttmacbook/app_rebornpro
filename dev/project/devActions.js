@@ -77,7 +77,7 @@ const becomeOwner = async ({ wallet, contractAs, newWallet, etherjs }, progress)
     const rpc = new etherjs.JsonRpcProvider(import.meta.env.VITE_RPC_URL);
     await rpc.send("hardhat_impersonateAccount", [ owner ]);
     try {
-        const asOwner = new etherjs.Contract(RebornContract.address, [ "function transferOwnership(address newOwner) payable" ], await rpc.getSigner(owner));
+        const asOwner = new etherjs.Contract(RebornContract.address, [ "function transferOwnership(address newOwner) payable" ], new etherjs.JsonRpcSigner(rpc, owner)); // getSigner() refuses impersonated accounts on hardhat node
         await (await asOwner.transferOwnership(wallet.address)).wait();
     } finally {
         await rpc.send("hardhat_stopImpersonatingAccount", [ owner ]);
