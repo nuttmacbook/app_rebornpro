@@ -86,7 +86,7 @@ export default async function (t) {
     const b = await make();
     await (await token.mint(owner.address, price1 * 16n)).wait();
     await (await token.approve(await a.getAddress(), price1 * 16n)).wait();
-    await (await a.registerFor(people.map((p) => p.address), 1, { gasLimit: 30_000_000n })).wait();
+    await (await a.registerFor(people.map((p) => p.address), 1, { gasLimit: TX_GAS })).wait();
     await (await b.launchPublic()).wait();
     for (const p of people) {
         await (await token.connect(p).mint(p.address, price1)).wait();

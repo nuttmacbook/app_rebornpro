@@ -113,7 +113,7 @@ export default async function (t) {
     await fundOwner(price1 * 60n);
     const before = await totals();
     check("registerFor: empty list", await doesRevert(() => matrix.registerFor.staticCall([], 1), "BatchCount"));
-    check("registerFor: more than 50 wallets", await doesRevert(() => matrix.registerFor.staticCall(fresh(51), 1), "BatchCount"));
+    check("registerFor: more than 20 wallets", await doesRevert(() => matrix.registerFor.staticCall(fresh(21), 1), "BatchCount"));
     check("registerFor: sponsor 0", await doesRevert(() => matrix.registerFor.staticCall(fresh(1), 0), "UnknownSponsor"));
     check("registerFor: sponsor that does not exist", await doesRevert(() => matrix.registerFor.staticCall(fresh(1), 9999), "UnknownSponsor"));
     check("registerFor: a wallet that already joined (whole batch stops)", await doesRevert(() => matrix.registerFor.staticCall([ ...fresh(2), next[0] ], 1), "AlreadyRegistered"));
@@ -131,7 +131,7 @@ export default async function (t) {
     /* ------------------------------------ 5. a full batch */
 
     await fundOwner(price1 * 50n);
-    const r50 = await (await matrix.registerFor(fresh(50), 1, { gasLimit: 30_000_000n })).wait();
-    t.gas("registerFor 50 wallets", r50);
-    check("registerFor: 50 wallets in one transaction fit in a block", r50.gasUsed < 30_000_000n, `${r50.gasUsed} gas, queue ${(await matrix.getOwnerView()).queued}`);
+    const r20 = await (await matrix.registerFor(fresh(20), 1, { gasLimit: TX_GAS })).wait();
+    t.gas("registerFor 20 wallets", r20);
+    check("registerFor: 20 wallets fit under the 16,777,216 gas cap per transaction", r20.gasUsed < 16_777_216n, `${r20.gasUsed} gas, queue ${(await matrix.getOwnerView()).queued}`);
 }

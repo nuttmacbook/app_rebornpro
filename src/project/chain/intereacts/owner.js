@@ -13,7 +13,7 @@ import { t } from "../../lang";
  */
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
-const MAX_BATCH = 50;
+const MAX_BATCH = 20;
 
 /** Addresses from a text box (lines, commas or spaces), duplicates removed in order */
 const parseAddresses = (text) => [ ...new Set(String(text ?? "").split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean)) ];

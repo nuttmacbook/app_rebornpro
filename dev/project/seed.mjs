@@ -94,7 +94,7 @@ async function goLiveSetup({ provider, deployed, launch, isLaunched = false }) {
             const token = deployed.tokens.USDT.contract.connect(owner);
             await (await token.mint(launch.owner, total)).wait();
             await (await token.approve(deployed.addresses.RebornMatrix, total)).wait();
-            await (await asOwner.registerFor(launch.paid, launch.sponsor, { gasLimit: 30_000_000n })).wait();
+            await (await asOwner.registerFor(launch.paid, launch.sponsor, { gasLimit: TX_GAS })).wait();
         }
         if (isLaunched) await (await asOwner.launchPublic()).wait();
     } finally {

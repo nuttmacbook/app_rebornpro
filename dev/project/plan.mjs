@@ -81,7 +81,7 @@ function launchOf(s) {
         if (seen.has(a.toLowerCase())) fail2(`${a} is listed twice.`);
         seen.add(a.toLowerCase());
     }
-    if (paid.length > 50) fail2("at most 50 wallets (one transaction).");
+    if (paid.length > 20) fail2("at most 20 wallets (one registerFor transaction; split the list in the Owner page if you need more).");
     if (!Number.isInteger(sponsor) || sponsor < 1) fail2("paidSignUps.sponsor must be a member id (1 = root).");
     return { owner, paid, sponsor };
 }

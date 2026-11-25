@@ -24,7 +24,7 @@ const status = (data) => /*html*/`
 const paidForm = (data) => /*html*/`
     <div class="plate p-5 sm:p-6">
         ${blockHead(t("Sign up others, paid"), t("{price} each", { price: moneyText(data, data.packages[0]?.price ?? 0n) }))}
-        <p class="mt-2 text-[14px] text-cinder">${t("New wallets join package 1 under the sponsor you choose, like a normal sign-up: the owner wallet pays the price for each, and the money is split the same way. The sponsor gets the referral pay of every later entry. Up to 50 at a time.")}</p>
+        <p class="mt-2 text-[14px] text-cinder">${t("New wallets join package 1 under the sponsor you choose, like a normal sign-up: the owner wallet pays the price for each, and the money is split the same way. The sponsor gets the referral pay of every later entry. Up to 20 at a time.")}</p>
         <label class="sr-only" for="paid-wallets">${t("Wallets to sign up")}</label>
         <textarea id="paid-wallets" data-paid-wallets rows="4" wrap="off" placeholder="0x…" spellcheck="false" class="field mt-4 text-[14px]"></textarea>
         <div class="mt-3 flex flex-col gap-3 sm:flex-row">

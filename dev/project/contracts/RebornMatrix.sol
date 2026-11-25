@@ -68,7 +68,7 @@ contract RebornConstant {
     uint256 constant MAX_PACKAGES = 32;
     uint256 constant TREE_NODES = 13;          // nodes returned by getBoardView: 3 levels (1 + 3 + 9)
     uint256 constant MAX_PAGE = 100;           // rows per page in list views
-    uint256 constant MAX_BATCH = 50;           // accounts one registerFor() may take
+    uint256 constant MAX_BATCH = 20;           // accounts one registerFor() may take: stays under the 16,777,216 gas cap per tx (EIP-7825)
     uint256 constant AUTO = type(uint256).max; // "pick for me" in getBoardView
 
     // Kind of an ID (Position.kind, Job.kind)
