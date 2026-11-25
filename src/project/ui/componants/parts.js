@@ -39,7 +39,7 @@ const button = (label, onclick, { isDisabled = false, kind = "fire", full = true
     const pad = size === "sm" ? "px-4 py-2 text-[13px]" : "px-6 py-3 text-[15px]";
     return /*html*/`
         <button type="${type}" ${onclick ? `onclick="${onclick}"` : ""} ${isDisabled ? "disabled" : ""}
-            class="btn ${kind === "fire" ? "btn-fire" : "btn-line"} ${full ? "w-full" : ""} inline-flex items-center justify-center font-display font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember disabled:cursor-not-allowed ${pad}">
+            class="btn ${kind === "fire" ? "btn-fire" : "btn-line"} ${full ? "w-full" : ""} inline-flex shrink-0 items-center justify-center whitespace-nowrap font-display font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember disabled:cursor-not-allowed ${pad}">
             ${label}
         </button>
     `;

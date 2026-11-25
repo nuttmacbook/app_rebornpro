@@ -75,7 +75,7 @@ const newIdRow = (data, r) => {
         iconHtml: icon(isUpgrade ? "up" : "join", "border border-seam text-bone"),
         title: isUpgrade ? t("Bought {name}", { name: escape(packageName(data, r.pkg)) }) : t("Joined {name}", { name: escape(packageName(data, r.pkg)) }),
         lines: [ where ],
-        amounts: r.idKind === FREE ? [] : [ `<span>${t("Paid from the wallet")} <b class="figure font-semibold text-bone">${moneyText(data, r.amount)}</b></span>` ],
+        amounts: r.idKind === FREE ? [] : [ `<span>${t("Price paid")} <b class="figure font-semibold text-bone">${moneyText(data, r.amount)}</b></span>` ],
     });
 };
 

@@ -9,7 +9,7 @@
 import "./main.css";
 import { t, setLang } from "../lang";
 import { startApp, openWallet } from "../../engine/ui/app";
-import { getHomeData, getPlanData, getBoardData, getTeamData, getHistoryData, getOwnerData, register, upgrade, processQueue, transferWallet, placeFree, launchPublic, addPackage, setPackageOpen } from "../chain";
+import { getHomeData, getPlanData, getBoardData, getTeamData, getHistoryData, getOwnerData, register, upgrade, processQueue, transferWallet, placeFree, registerFor, launchPublic, addPackage, setPackageOpen } from "../chain";
 import { header } from "./componants/nav";
 import { mountBackdrop } from "./componants/backdrop";
 import { isMaintenance, showMaintenance } from "./componants/maintenance";
@@ -201,6 +201,14 @@ window.doPlaceFree = () => {
     const text = document.querySelector("[data-free-wallets]")?.value ?? "";
     const pkg = Number(document.querySelector("[data-free-package]")?.value ?? 1);
     app.runTx((wallet, options) => placeFree(wallet, { ...options, text, pkg }), { title: "Free IDs placed", desc: "The investors' IDs are on the board below the root." });
+};
+
+window.doRegisterFor = () => {
+    const text = document.querySelector("[data-paid-wallets]")?.value ?? "";
+    const typed = String(document.querySelector("[data-paid-sponsor]")?.value ?? "").trim();
+    const sponsorId = typed ? parseMember(typed) : 1;
+    if (!sponsorId) return notify.error(new Error("That sponsor does not exist."));
+    app.runTx((wallet, options) => registerFor(wallet, { ...options, text, sponsorId }), { title: "Signed up", desc: "The new members are on the board below their sponsor." });
 };
 
 window.doLaunch = () => {

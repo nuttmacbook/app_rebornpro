@@ -12,8 +12,7 @@ Vite + JavaScript ธรรมดา + Tailwind v4 + kitbox, contract เขี�
 | --- | --- |
 | สมัคร | ผ่านลิงก์ `?ref=` เข้าแพ็กเกจแรกเท่านั้น ผู้แนะนำล็อกถาวร |
 | แพ็กเกจ | เริ่ม 10 / 50 / 100 USDT ซื้อเรียงลำดับ แพ็กเกจละ 1 ครั้ง (ไอดีเพิ่มจาก Reborn เท่านั้น) owner เพิ่มแพ็กเกจได้ภายหลัง |
-| วางผัง | ทุกแบบ (สมัคร / อัปเกรด / Reborn / ไอดีฟรี) ใช้กติกาเดียวกัน: หาช่องตื้นสุด ซ้ายก่อน ใต้ไอดีที่เลือกจาก `PLACEMENT` (วิธี `openDepth` แบบ APEX) |
-| `PLACEMENT` | `MIXED` (ลูกค้าเลือก): ไล่ไอดีของเจ้าของ 1 → 1.1 → 1.2 แต่ละไอดีรับจนเต็ม 2 ชั้น (3 + 9 = 12 ช่อง) แล้วจึงไปไอดีถัดไป / `CURRENT` ไอดีล่าสุด / `FIRST` ไอดีแรกแล้วล้นลงทีม |
+| วางผัง | ทุกแบบ (สมัคร / อัปเกรด / Reborn / ไอดีฟรี) ใช้กติกาเดียวกัน: หาช่องตื้นสุด ซ้ายก่อน (วิธี `openDepth` แบบ APEX) ใต้ไอดีของเจ้าของตามลำดับ 1 → 1.1 → 1.2 แต่ละไอดีรับจนเต็ม 2 ชั้น (3 + 9 = 12 ช่อง) แล้วจึงไปไอดีถัดไป (แบบที่ลูกค้าเลือก; โหมด CURRENT/FIRST ตัดออกแล้ว) |
 | ไอดีของใคร: สมัครผ่านลิงก์ | ของผู้แนะนำ |
 | ไอดีของใคร: อัปเกรด | ของผู้แนะนำในผังนั้น ถ้ายังไม่มีแพ็กเกจนั้น ไล่ขึ้นสายแนะนำจนเจอ (Root มีทุกแพ็กเกจ) |
 | ไอดีของใคร: Reborn | ของตัวเอง (ลงในทีมตัวเอง) |
@@ -43,11 +42,12 @@ reborn-pro/
 ├── settings/.env(.example)          ⚙️  เว็บ: project id, network, ชื่อแอป, โหมด production/dev, VITE_ID_KEY
 ├── src/project/chain/               ✏️  on-chain: reads.js, viewParse.js, revertText.js, intereacts/ (register, upgrade, processQueue, transferWallet, owner)
 ├── src/project/ui/                  ✏️  off-chain: main.js, pages/ (home, plan, board, team, owner), componants/, main.css (ธีมดำ-แดง, ฟอนต์ IBM Plex Sans Thai)
-├── dev/settings/contracts/RebornMatrix.env  ⚙️  token, ROOT_WALLET, PRODUCT / MARKETING / TREASURY_WALLET, ราคา, เปอร์เซ็นต์, PLACEMENT, STEPS_PER_TX
-├── dev/project/contracts/RebornMatrix.sol   ✏️  contract
+├── dev/settings/contracts/RebornMatrix.env  ⚙️  token, ROOT_WALLET, PRODUCT / MARKETING / TREASURY_WALLET, ราคา, เปอร์เซ็นต์, STEPS_PER_TX
+├── dev/project/contracts/RebornMatrix.sol   ✏️  2 contract ในไฟล์เดียว: RebornMatrix (ทุกอย่างที่เขียน/ย้ายเงิน, หลัง proxy) + RebornViews (ฟังก์ชันอ่านทั้งหมด)
+├── dev/project/reborn.mjs           ✏️  รวม ABI ของ 2 contract ให้สคริปต์/เทสเรียกที่ address เดียว, deploy ชุดใหม่ในเทส
 ├── dev/project/plan.mjs             ✏️  แปลง .env → PlanInput (หยุดพร้อมชื่อ key ถ้าค่าผิด)
 ├── dev/project/model.mjs            ✏️  โมเดล JS ใช้เป็นเฉลยในเทสเท่านั้น
-├── dev/project/test/                ✏️  RebornMatrix.test.mjs (ทั้งแผน), Placement.test.mjs (ตำแหน่ง 2 โหมด)
+├── dev/project/test/                ✏️  RebornMatrix.test.mjs (ทั้งแผน), Placement.test.mjs (ตำแหน่ง), History.test.mjs, OwnerSignUp.test.mjs
 └── dev/project/seed.mjs, devActions.js  ✏️  ข้อมูลตัวอย่าง + ปุ่มในแผงทดสอบ
 ```
 
@@ -72,7 +72,6 @@ npm run dev -- --seed 40    # ถ้าอยากได้ข้อมูล�
 ไอดีฟรีแสดงในเว็บเหมือนไอดีที่สมัครปกติ (Sign-up) มีแค่หน้า Owner ที่นับจำนวนไอดีฟรี
 
 ทดสอบ contract: `cd dev && npm test` (ทุกไฟล์), `npm test -- --only Placement`
-ทดสอบโหมดวางผังอื่นโดยไม่แก้ไฟล์: `PLACEMENT=CURRENT npm test`, `PLACEMENT=FIRST npm test`
 
 ---
 
@@ -83,7 +82,6 @@ npm run dev -- --seed 40    # ถ้าอยากได้ข้อมูล�
 | `ROOT_WALLET`, `PRODUCT_WALLET`, `MARKETING_WALLET`, `TREASURY_WALLET` | `dev/settings/contracts/RebornMatrix.env` | **ต้องเปลี่ยน** ตอนนี้เป็นแอดเดรสทดสอบสาธารณะของ hardhat; Root ต้องไม่ซ้ำกับ 3 กระเป๋าบริษัท |
 | `TOKEN_ADDRESS` | เดียวกัน | USDT บน BSC (ตั้งไว้แล้ว) |
 | `PACKAGE_PRICES`, `*_PERCENT` | เดียวกัน | แต่ละช่อง แนะนำ + product + marketing + treasury + เงินสด + Reborn ต้องรวม 100 และ Reborn 3 ช่องรวม 100 |
-| `PLACEMENT` | เดียวกัน | `MIXED` ตามที่ลูกค้าเลือก ใช้กับการวางทุกแบบ (`CURRENT` / `FIRST` ยังใช้ได้; เปลี่ยนได้ก่อน deploy เท่านั้น) |
 | `VITE_PROJECT_ID` | `settings/.env` + Vercel | ตอนนี้เป็น id ทดสอบ |
 | `VITE_SITE_URL` | `settings/.env` + Vercel | โดเมนจริง |
 | `VITE_ID_KEY` | `settings/.env` + Vercel | **ห้ามเปลี่ยนหลังเปิดใช้** โค้ดสมาชิกและลิงก์ทั้งหมดจะเปลี่ยน |
@@ -138,3 +136,26 @@ deploy / upgrade / verify: ดู `dev/README.md` (`npm run deploy:live`, `--sen
 - ประวัติผูกกับเลขสมาชิก ย้ายกระเป๋า (transferWallet) แล้วประวัติตามไปด้วย
 - เงินที่ส่งเข้ากระเป๋าบริษัทไม่ได้อยู่ในประวัติสมาชิก (ดูได้จาก event `CompanyPaid` บน BscScan)
 - ค่าแก๊สเพิ่มจากการบันทึก: สมัครประมาณ 650,000 gas (เดิม ~490,000), อัปเกรด ~540,000 (เดิม ~390,000)
+
+## 10. owner สมัครให้คนอื่นแบบจ่ายเงิน
+
+- หน้า Owner tools → การ์ด "Sign up others, paid": ใส่กระเป๋าใหม่ (ครั้งละไม่เกิน 50) และไอดีผู้แนะนำ (ว่าง = Root) แล้วกด "Sign up and pay"
+- กระเป๋า owner จ่ายราคาแพ็กเกจ 1 แทนทุกกระเป๋า (เว็บขอ approve ยอดรวมก่อน แล้วส่ง `registerFor` 1 ธุรกรรม)
+- เงินแบ่งเหมือนการสมัครปกติทุกอย่าง: ผู้แนะนำได้ 30% และได้ค่าแนะนำจากทุกการเข้าครั้งต่อไปของคนนั้น, ช่องจ่ายตามปกติ, บริษัท 10%
+- ใช้ได้ทั้งก่อนและหลัง Launch; ต่างจากไอดีฟรีที่ไม่มีเงินเข้า และใช้ได้เฉพาะก่อน Launch
+- สมัครให้ได้เฉพาะแพ็กเกจ 1 สมาชิกอัปเกรดเองตามปกติ
+- ถ้ามีกระเป๋าไหนสมัครแล้ว เป็นกระเป๋าบริษัท หรือผู้แนะนำไม่มีอยู่ ทั้งรายการจะไม่ถูกส่ง (เว็บบอกว่ากระเป๋าไหน)
+- ค่าแก๊ส: 3 กระเป๋า ~1.9M gas, 50 กระเป๋า ~14.3M gas (พอดีบล็อก ID ที่เหลือรอคิวให้วางต่อ)
+
+## 11. สัญญา 2 ตัว: RebornMatrix + RebornViews
+
+- สัญญาเดียวเกินขนาด 24,576 bytes จึงแยกเป็น 2 ตัวที่ใช้ข้อมูลชุดเดียวกัน:
+  - **RebornMatrix** (หลัง proxy, 12,834 bytes): สมัคร, อัปเกรด, วางผัง, จ่ายเงิน, Reborn, คิว, ประวัติ, เครื่องมือ owner
+  - **RebornViews** (11,834 bytes): ฟังก์ชันอ่านทั้งหมด (`getHomeView`, `getPlanView`, `getBoardView`, `getTeamView`, `getHistoryView`, `getOwnerView`, `getSettings`, `getPosition` ฯลฯ)
+- ทุกคน (เว็บ, BscScan, สคริปต์) เรียกที่ address ของ **RebornMatrix** เท่านั้น ฟังก์ชันที่ RebornMatrix ไม่มี จะถูกส่งต่อ (`fallback` + `delegatecall`) ไปรันใน RebornViews บนข้อมูลของ RebornMatrix — เว็บยังอ่าน 1 call ต่อหน้า
+- RebornViews มีแต่ฟังก์ชันอ่าน (เทสเช็กแล้ว) เรียกตรงที่ address ของมันเองจะเห็นแต่ข้อมูลว่าง
+- เหลือที่ว่างใน RebornMatrix ~11,700 bytes สำหรับฟีเจอร์ในอนาคต
+- **deploy**: `npm run deploy:live -- --send` deploy 3 ตัวตามลำดับ RebornViews → RebornMatrixImplementation → RebornMatrix (proxy) และเช็กว่า proxy ชี้ RebornViews ถูกตัว
+- **verify บน BscScan**: verify ทั้ง RebornViews, RebornMatrixImplementation และ proxy (`npm run verify` พิมพ์ข้อมูลให้ครบ); บน BscScan หน้า RebornMatrix จะเห็นปุ่มอ่านเฉพาะของ RebornMatrix ส่วนฟังก์ชันอ่านของหน้าเว็บให้ดูที่หน้า RebornViews (อ่านค่าจริงผ่านเว็บ)
+- **แก้ฟังก์ชันอ่านทีหลัง** (ไม่ต้อง upgrade proxy): แก้ RebornViews → `npm run deploy:live -- --send --redeploy RebornViews` → owner เรียก `setViews(<address ใหม่>)` (BscScan → Write as Proxy) → รัน `deploy:live` อีกครั้งให้บันทึกตรง
+- **ห้าม** ใส่ฟังก์ชันที่เขียนข้อมูลใน RebornViews และตัวแปรใหม่ใส่ท้าย `RebornStorage` เท่านั้น (สองสัญญาใช้ storage ชุดเดียวกัน)

@@ -7,11 +7,10 @@
 
 const SLOTS = 3;
 const KIND = { SIGN_UP: 0, UPGRADE: 1, REBORN: 2, FREE: 3 };
-const PLACE = { CURRENT: 0, FIRST: 1, MIXED: 2 };
 
 class RebornModel {
     /**
-     * @param {object} plan  { prices: bigint[], referralBps, companyBps, cashBps: bigint[3], rebornBps: bigint[3], placement, stepsPerTx }
+     * @param {object} plan  { prices: bigint[], referralBps, companyBps, cashBps: bigint[3], rebornBps: bigint[3], stepsPerTx }
      * @param {string} root     root wallet
      * @param {string[]} companies  product, marketing, treasury wallets
      */
@@ -54,6 +53,17 @@ class RebornModel {
         this.buy(id, 1, KIND.SIGN_UP);
         this.process(this.steps);
         return id;
+    }
+
+    /** registerFor(accounts, sponsorId) by the owner: all sign up first, then one round of placing */
+    registerFor(accounts, sponsor) {
+        const ids = accounts.map((account) => {
+            const id = this.newMember(account, sponsor);
+            this.buy(id, 1, KIND.SIGN_UP);
+            return id;
+        });
+        this.process(this.steps);
+        return ids;
     }
 
     upgrade(account, pkg) {
@@ -103,7 +113,7 @@ class RebornModel {
         return this.entryOf(sponsor === 0 ? 1 : sponsor, job.pkg);
     }
 
-    /** Which of `member`'s IDs, by the placement mode */
+    /** Which of `member`'s IDs: in order, each until its first two levels are full (like the contract) */
     /** Company money split by the product / marketing / treasury shares; the treasury takes the rounding */
     toCompanies(amount) {
         const shares = this.plan.companyBps;
@@ -119,9 +129,6 @@ class RebornModel {
     entryOf(member, pkg) {
         const list = this.mine[member][pkg];
         if (!list.length) return 0;
-        const mode = Number(this.plan.placement);
-        if (mode === PLACE.FIRST) return list[0];
-        if (mode === PLACE.CURRENT) return list[list.length - 1];
         // MIXED: first ID in order with an open slot within two levels (checked by walking, not openDepth)
         const key = `${member}:${pkg}`;
         let at = this.cursor.get(key) ?? 0;
@@ -201,4 +208,4 @@ class RebornModel {
     }
 }
 
-export { RebornModel, KIND, PLACE, SLOTS };
+export { RebornModel, KIND, SLOTS };

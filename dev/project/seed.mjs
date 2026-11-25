@@ -3,12 +3,20 @@
  * The contract itself is deployed by the engine from dev/settings/deploy.config.mjs (same as the real deploy).
  *
  * deployed (from dev/engine/local-chain.mjs):
- *   deployed.at("RebornMatrix")   the contract at its proxy address
+ *   rebornAt(deployed)   the contract at its proxy address
  *   deployed.tokens.USDT          test token from dev/settings/test-tokens.json ({ contract, address, decimals })
  */
 
 import { ethers } from "ethers";
 import { TX_GAS, setBalance } from "../engine/node.mjs";
+import { rebornAt } from "./reborn.mjs";
+
+/** Money totals [held, paidIn, referral, boardPaid, company] from the home view (same numbers the site shows) */
+const totals = async (m) => {
+    const v = await m.getHomeView("0x0000000000000000000000000000000000000000", 0);
+    return [ v.totalHeld, v.totalIn, v.totalReferral, v.totalBoardPaid, v.totalCompany ];
+};
+
 
 /** A new wallet with BNB for gas */
 async function newPerson(provider) {
@@ -19,7 +27,7 @@ async function newPerson(provider) {
 
 /** Mints the price of `pkg` to `person` and approves exactly that */
 async function payFor(deployed, person, pkg) {
-    const matrix = deployed.at("RebornMatrix", person);
+    const matrix = rebornAt(deployed, person);
     const token = deployed.tokens.USDT.contract.connect(person);
     const price = (await matrix.getPackage(pkg)).price;
     await (await token.mint(person.address, price)).wait();
@@ -46,7 +54,7 @@ async function upgrader(deployed, person, pkg) {
  * (LOCAL_SEED in dev/settings/local.env) join under earlier members; every third one upgrades.
  */
 async function seed({ provider, deployed, count, onProgress = () => {} }) {
-    const matrix = deployed.at("RebornMatrix");
+    const matrix = rebornAt(deployed);
     const investors = [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address);
     const packages = Number(await matrix.packageCount());
     for (let pkg = 1; pkg <= packages; pkg++) await (await matrix.placeFree(investors, pkg, { gasLimit: TX_GAS })).wait();
@@ -65,8 +73,8 @@ async function seed({ provider, deployed, count, onProgress = () => {} }) {
 
 /** Extra lines printed when npm run dev is ready */
 async function summary(deployed) {
-    const matrix = deployed.at("RebornMatrix");
-    const [ held, paidIn ] = await matrix.getTotals();
+    const matrix = rebornAt(deployed);
+    const [ held, paidIn ] = await totals(matrix);
     const units = (v) => ethers.formatUnits(v, deployed.tokens.USDT.decimals);
     return [
         `  Members ${await matrix.memberCount()}, waiting placements ${(await matrix.getOwnerView()).queued}`,

@@ -15,8 +15,6 @@ const bps = (key, text) => {
     return Math.round(Number(text) * 100);
 };
 
-const PLACE = { CURRENT: 0, FIRST: 1, MIXED: 2 };
-
 // The company share is split between these wallets, in this order (the contract's order too)
 const COMPANY_KEYS = [ "PRODUCT", "MARKETING", "TREASURY" ];
 
@@ -47,9 +45,6 @@ function planOf(s) {
     });
     if (reborn.reduce((a, b) => a + b, 0) !== 10_000) fail("SLOT_REBORN_PERCENT", "must add up to 100.");
 
-    const placement = PLACE[String(s.PLACEMENT).toUpperCase()];
-    if (placement === undefined) fail("PLACEMENT", `has "${s.PLACEMENT}", expected MIXED, CURRENT or FIRST.`);
-
     const steps = Number(s.STEPS_PER_TX);
     if (!Number.isInteger(steps) || steps < 1) fail("STEPS_PER_TX", "must be a whole number above 0.");
 
@@ -61,9 +56,8 @@ function planOf(s) {
         companyBps: companies.map(BigInt),
         cashBps: cash.map(BigInt),
         rebornBps: reborn.map(BigInt),
-        placement: BigInt(placement),
         stepsPerTx: BigInt(steps),
     };
 }
 
-export { planOf, PLACE, COMPANY_KEYS, companyWalletsOf };
+export { planOf, COMPANY_KEYS, companyWalletsOf };

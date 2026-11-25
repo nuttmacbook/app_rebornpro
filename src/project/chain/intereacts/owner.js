@@ -1,4 +1,5 @@
-import { box } from "../../../engine/chain/connect";
+import { box, formNumber } from "../../../engine/chain/connect";
+import { approveIfNeeded } from "../../../engine/chain/erc20";
 import { invalidateReads } from "../../../engine/chain/cache";
 import { normalize } from "../../../engine/chain/txError";
 import { readHomeView, readOwnerView } from "../reads";
@@ -8,7 +9,7 @@ import { t } from "../../lang";
 
 /*
  * YOUR CODE (on-chain). What only the contract owner can do: free IDs for investors (before launch),
- * launch, add a package, pause or resume one. Every function checks first, then sends one transaction.
+ * paid sign-ups for other wallets (any time), launch, add a package, pause or resume one. Every function checks first, then sends one transaction.
  */
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
@@ -70,6 +71,55 @@ export async function placeFree(wallet, { text, pkg, onStep = () => {} } = {}) {
     const already = list.find((_, i) => views[i].mine[p - 1]?.has);
     if (already) throw new Error(t("{wallet} already has this package.", { wallet: already }));
     return send(wallet, onStep, "The free IDs were not placed.", (c) => c.placeFree(list, BigInt(p)));
+}
+
+/** New wallets from a text box: checked here so the owner never signs something that would fail */
+const checkNewWallets = (list, owner) => {
+    if (!list.length) throw new Error("Add at least one wallet.");
+    if (list.length > MAX_FREE) throw new Error(t("Up to {max} wallets at a time. Split the list.", { max: MAX_FREE }));
+    const wrong = list.find((a) => !ADDRESS.test(a));
+    if (wrong) throw new Error(t("This is not a wallet address: {value}", { value: wrong }));
+    const companies = owner.companies.map((w) => String(w).toLowerCase());
+    if (list.some((a) => companies.includes(a.toLowerCase()))) throw new Error("A company wallet (product, marketing or treasury) cannot hold a member account.");
+};
+
+/**
+ * Paid sign-ups for other wallets: each joins package 1 under `sponsorId`, and the owner wallet pays the
+ * package 1 price for every one (approve, then one transaction). Before or after launch.
+ * Steps: check → approve price x wallets (only when needed) → registerFor.
+ *
+ * @param {object} wallet  { address, signer } of the owner
+ * @param {object} options  { text: wallets, sponsorId: member id (1 = root), onStep }
+ * @returns {Promise<object>} receipt
+ */
+export async function registerFor(wallet, { text, sponsorId = 1, onStep = () => {} } = {}) {
+    onStep({ stage: "checking" });
+    const owner = await mustBeOwner(wallet);
+    const list = parseAddresses(text);
+    checkNewWallets(list, owner);
+    const sponsor = BigInt(sponsorId || 0);
+    const [ home, ...views ] = await Promise.all([ readHomeView(wallet.address, sponsor, { fresh: true }), ...list.map((a) => readHomeView(a, 0n, { fresh: true })) ]);
+    if (!home.refValid) throw new Error("That sponsor does not exist.");
+    const joined = list.find((_, i) => views[i].isMember);
+    if (joined) throw new Error(t("{wallet} has already joined.", { wallet: joined }));
+    const first = home.packages[0];
+    if (!first?.isOpen) throw new Error("This package is paused for now.");
+    const amount = first.price * BigInt(list.length);
+    if (home.walletBalance < amount) throw new Error(t("This costs {price}. The owner wallet does not have enough.", { price: `${formNumber(amount, home.tokenDecimals, 2)} ${home.tokenSymbol}` }));
+
+    const total = home.allowance < amount ? 2 : 1;
+    await approveIfNeeded({ wallet, token: home.token, spender: RebornContract.address, amount, allowance: home.allowance, onStep, index: 1, total });
+
+    onStep({ stage: "register", index: total, total });
+    try {
+        const tx = await box.createEtherContract(RebornContract, wallet.signer).registerFor(list, sponsor);
+        onStep({ stage: "registering", index: total, total });
+        const receipt = await tx.wait();
+        invalidateReads();
+        return receipt;
+    } catch (error) {
+        throw normalize(readableRevert(error), box.handleTxError(RebornContract, error), "The sign-ups did not go through.");
+    }
 }
 
 /** Opens the plan to everyone. One way: free placement closes for good. */

@@ -7,9 +7,10 @@
  */
 
 import { ethers } from "ethers";
-import { TX_GAS, deployProxied } from "../../engine/node.mjs";
+import { TX_GAS } from "../../engine/node.mjs";
+import { deployReborn } from "../reborn.mjs";
 import { newPerson } from "../seed.mjs";
-import { planOf, PLACE } from "../plan.mjs";
+import { planOf } from "../plan.mjs";
 
 const NEW_ID = 0, REFERRAL = 1, SLOT = 2;
 const SIGN_UP = 0, UPGRADE = 1, REBORN = 2, FREE = 3;
@@ -36,8 +37,7 @@ export default async function (t) {
 
     const root = ethers.Wallet.createRandom().address;
     const companies = [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address);
-    const { contract: matrix, address } = await deployProxied(owner, contracts, "RebornMatrix", "initialize",
-        owner.address, deployed.tokens.USDT.address, root, companies, { ...planOf(s), placement: BigInt(PLACE.MIXED) });
+    const { contract: matrix, address } = await deployReborn(owner, contracts, { owner: owner.address, token: deployed.tokens.USDT.address, root, companies, plan: planOf(s) });
     const price = async (pkg) => (await matrix.getPackage(pkg)).price;
     const bps = (v, b) => v * BigInt(b) / 10_000n;
     const plan = planOf(s);

@@ -70,7 +70,6 @@ const toPlanView = (v) => ({
     companyBps: listOf(v?.companyBps).map(num),    // product, marketing, treasury
     cashBps: listOf(v?.cashBps).map(num),
     rebornBps: listOf(v?.rebornBps).map(num),
-    placement: num(v?.placement),
     memberCount: num(v?.memberCount),
     launched: Boolean(v?.launched),
     packages: listOf(v?.packages).map(toPackage),

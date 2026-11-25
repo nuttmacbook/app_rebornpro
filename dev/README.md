@@ -65,7 +65,7 @@ dev/
 ## Verify บน BscScan
 
 1. `npm run verify` → ทุก contract ต้องขึ้น `matches this source`
-2. bscscan.com → Verify & Publish: **RebornMatrixImplementation ก่อน** แล้วค่อย proxy (`RebornMatrix`)
+2. bscscan.com → Verify & Publish: **RebornViews** และ **RebornMatrixImplementation ก่อน** แล้วค่อย proxy (`RebornMatrix`)
    Compiler Type **Solidity (Standard-Json-Input)**, compiler `v0.8.37+commit.f401782d`, license MIT,
    อัปโหลด `generated/verify/bsc/<key>.json`, constructor arguments ตามที่สคริปต์พิมพ์
 3. หน้า proxy: More Options → **Is this a proxy?** → Verify
@@ -75,10 +75,10 @@ dev/
 
 ## Proxy และการอัปเกรด
 
-- ผู้ใช้และเว็บคุยกับ proxy (`RebornMatrix`) ส่วน logic คือ `RebornMatrixImplementation`
+- ผู้ใช้และเว็บคุยกับ proxy (`RebornMatrix`) ส่วน logic คือ `RebornMatrixImplementation`; ฟังก์ชันอ่านอยู่ใน `RebornViews` ที่ proxy เรียกต่อเอง (เปลี่ยนตัวได้ด้วย `setViews` โดยไม่ต้อง upgrade)
 - `initialize` รันใน constructor ของ proxy จึงไม่มีใครชิงเรียกก่อนได้
 - owner = admin ของ proxy: อัปเกรดได้และ `adminCall` ทำอะไรก็ได้ในนามสัญญา จึงควรเป็น hardware wallet หรือ multisig
-- ตัวแปรใหม่ใส่ท้าย `Storage` เท่านั้น ห้ามสลับหรือลบ
+- ตัวแปรใหม่ใส่ท้าย `RebornStorage` เท่านั้น ห้ามสลับหรือลบ (RebornMatrix และ RebornViews ใช้ชุดเดียวกัน)
 - ถ้า deployer ไม่ใช่ admin: `--upgrade` จะ deploy logic ใหม่แล้วพิมพ์คำสั่ง `upgradeTo` ให้ส่งจากกระเป๋า admin จากนั้นรัน `deploy:live` อีกรอบเพื่ออัปเดตบันทึก
 - ซ้อมอัปเกรดบนเชนทดสอบก่อนทำจริงเสมอ
 

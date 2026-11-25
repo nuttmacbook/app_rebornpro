@@ -1,28 +1,35 @@
 /*
  * YOUR CODE (on-chain tests). Where IDs go, on fresh copies of the contract:
- *   - the example from the marketing picture, in all PLACEMENT modes (MIXED, CURRENT, FIRST)
- *   - MIXED: once ID 1's 3 + 9 slots are full, the sponsor's next people go below 1.1
+ *   - the example from the marketing picture
+ *   - once ID 1's 3 + 9 slots are full, the sponsor's next people go below 1.1
  *   - an upgrade looks up the sponsor line for a place, while the referral stays with the sponsor from sign-up
  *   - a board with free IDs completed by a paid one (reborn for free, kept money to the company)
  *   - a 400-level deep line: gas per sign-up stays flat
  */
 
 import { ethers } from "ethers";
-import { TX_GAS, deployProxied } from "../../engine/node.mjs";
+import { TX_GAS } from "../../engine/node.mjs";
+import { deployReborn } from "../reborn.mjs";
 import { newPerson } from "../seed.mjs";
-import { planOf, PLACE } from "../plan.mjs";
+import { planOf } from "../plan.mjs";
+
+/** Money totals [held, paidIn, referral, boardPaid, company] from the home view (same numbers the site shows) */
+const totals = async (m) => {
+    const v = await m.getHomeView("0x0000000000000000000000000000000000000000", 0);
+    return [ v.totalHeld, v.totalIn, v.totalReferral, v.totalBoardPaid, v.totalCompany ];
+};
+
 
 export default async function (t) {
     const { provider, owner, contracts, deployed, check } = t;
     const token = deployed.tokens.USDT.contract;
     const s = t.settings.RebornMatrix;
 
-    /** A fresh contract with the .env plan, a given link mode, new root/company wallets, launched or not */
-    const fresh = async ({ link, launch = true }) => {
+    /** A fresh contract with the .env plan, new root/company wallets, launched or not */
+    const fresh = async ({ launch = true } = {}) => {
         const root = ethers.Wallet.createRandom().address;
         const companies = [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address);
-        const plan = { ...planOf(s), placement: BigInt(link) };
-        const { contract, address } = await deployProxied(owner, contracts, "RebornMatrix", "initialize", owner.address, deployed.tokens.USDT.address, root, companies, plan);
+        const { contract, address } = await deployReborn(owner, contracts, { owner: owner.address, token: deployed.tokens.USDT.address, root, companies, plan: planOf(s) });
         if (launch) await (await contract.launchPublic()).wait();
         return { matrix: contract, address, root, companies };
     };
@@ -52,8 +59,8 @@ export default async function (t) {
 
     /* ------------------------------------ 1. the picture: A brings B C D, B brings 2, C brings 3, A brings 3 more */
 
-    const picture = async (link) => {
-        const c = await fresh({ link });
+    const picture = async () => {
+        const c = await fresh();
         const A = await join(c, 1);
         const [ B, C, D ] = [ await join(c, A.id), await join(c, A.id), await join(c, A.id) ];
         const a = await idsOf(c, 1, A.id);
@@ -69,32 +76,23 @@ export default async function (t) {
         return { c, A, a, b, cc, d, ok1, ok2, parents };
     };
 
-    const first = await picture(PLACE.FIRST);
-    check("picture: B, C, D take A's 3 slots", first.ok1);
-    check("picture: A's Reborn (1.1) goes below B, inside A's own team", first.ok2);
-    check("FIRST mode: A's next 3 people go below D, as in the picture", first.parents.every((p) => p === first.d), first.parents.join(","));
-
-    const current = await picture(PLACE.CURRENT);
-    const aNow = await idsOf(current.c, 1, current.A.id);
-    check("CURRENT mode: same start (B, C, D, then 1.1 below B)", current.ok1 && current.ok2);
-    check("CURRENT mode: A's next people go below A's newest ID (1.1, then 1.2)", current.parents[0] === aNow[1] && current.parents.every((p) => aNow.slice(1).includes(p)), `parents ${current.parents.join(",")}, A's IDs ${aNow.join(",")}`);
-
-    const layered = await picture(PLACE.MIXED);
-    check("MIXED mode: same start (B, C, D, then 1.1 below B)", layered.ok1 && layered.ok2);
-    check("MIXED mode: A's next 3 people go below D, ID 1's 9 slots still had room", layered.parents.every((p) => p === layered.d), layered.parents.join(","));
+    const layered = await picture();
+    check("picture: B, C, D take A's 3 slots", layered.ok1);
+    check("picture: A's Reborn (1.1) goes below B, inside A's own team", layered.ok2);
+    check("picture: A's next 3 people go below D, ID 1's 9 slots still had room", layered.parents.every((p) => p === layered.d), layered.parents.join(","));
     const level2 = async (c, top) => {
         const p = await c.matrix.getPosition(1, top);
         const kids = await Promise.all(p.kids.slice(0, Number(p.filled)).map((k) => c.matrix.getPosition(1, k)));
         return kids.reduce((n, k) => n + Number(k.filled), 0);
     };
-    check("MIXED mode: ID 1 now has all 3 + 9 slots full", Number((await layered.c.matrix.getPosition(1, layered.a[0])).filled) === 3 && (await level2(layered.c, layered.a[0])) === 9);
+    check("placement: ID 1 now has all 3 + 9 slots full", Number((await layered.c.matrix.getPosition(1, layered.a[0])).filled) === 3 && (await level2(layered.c, layered.a[0])) === 9);
     const next = [ await join(layered.c, layered.A.id), await join(layered.c, layered.A.id) ];
     const nextParents = await Promise.all(next.map((p) => parentOf(layered.c, 1, p.id)));
-    check("MIXED mode: then A's next people go below A's 1.1", nextParents.every((p) => p === layered.a[1]), `parents ${nextParents.join(",")}, 1.1 = ${layered.a[1]}`);
+    check("placement: then A's next people go below A's 1.1", nextParents.every((p) => p === layered.a[1]), `parents ${nextParents.join(",")}, 1.1 = ${layered.a[1]}`);
 
     /* ------------------------------------ 2. upgrade: place near the sponsor line, referral to the sponsor from sign-up */
 
-    const up = await fresh({ link: PLACE.CURRENT });
+    const up = await fresh();
     const A = await join(up, 1);
     const X = await join(up, A.id);
     const r = await buy(up, X.wallet, 2);
@@ -105,10 +103,10 @@ export default async function (t) {
     const Y = await join(up, A.id);
     await buy(up, Y.wallet, 2);
     const aTwo = await idsOf(up, 2, A.id);
-    check("upgrade: once the sponsor has the package, the next one goes below the sponsor's newest ID", (await parentOf(up, 2, Y.id)) === aTwo[aTwo.length - 1]);
+    check("upgrade: once the sponsor has the package, the next one goes below the sponsor's ID in it", (await parentOf(up, 2, Y.id)) === aTwo[0]);
 
-    // MIXED: an upgrade uses the same walk over the sponsor's IDs in that package
-    const upMixed = await fresh({ link: PLACE.MIXED });
+    // An upgrade uses the same walk over the sponsor's IDs in that package
+    const upMixed = await fresh();
     const A2 = await join(upMixed, 1);
     await buy(upMixed, A2.wallet, 2);
     const kids = [];
@@ -119,11 +117,11 @@ export default async function (t) {
     }
     const a2 = await idsOf(upMixed, 2, A2.id);
     const kidParents = await Promise.all(kids.map((k) => parentOf(upMixed, 2, k.id)));
-    check("MIXED upgrade: 3 go below the sponsor's first ID in that package, then into its 9", kidParents.slice(0, 3).every((p) => p === a2[0]) && kidParents[3] !== a2[0], kidParents.join(","));
+    check("upgrade: 3 go below the sponsor's first ID in that package, then into its 9", kidParents.slice(0, 3).every((p) => p === a2[0]) && kidParents[3] !== a2[0], kidParents.join(","));
 
     /* ------------------------------------ 3. free IDs then a paid one complete the root's board */
 
-    const mixed = await fresh({ link: PLACE.CURRENT, launch: false });
+    const mixed = await fresh({ launch: false });
     await (await mixed.matrix.placeFree([ ethers.Wallet.createRandom().address, ethers.Wallet.createRandom().address ], 1)).wait();
     await (await mixed.matrix.launchPublic()).wait();
     const M = await join(mixed, 1);
@@ -137,12 +135,12 @@ export default async function (t) {
     check("mixed board: the money it kept goes to the company wallets", got.reduce((a, b) => a + b, 0n) === expectCompany, got.map((g) => ethers.formatUnits(g, 18)).join(" / "));
     check("mixed board: split 50 / 25 / 25 between product, marketing, treasury", got[0] === expectCompany / 2n && got[1] === expectCompany / 4n && got[2] === expectCompany - got[0] - got[1]);
     check("mixed board: the root still got its cash and the referral", (await token.balanceOf(mixed.root)) === price * (plan.cashBps[2] + plan.referralBps) / 10_000n);
-    const [ held ] = await mixed.matrix.getTotals();
+    const [ held ] = await totals(mixed.matrix);
     check("mixed board: nothing left in the contract", held === 0n && (await token.balanceOf(mixed.address)) === 0n);
 
     /* ------------------------------------ 3b. the planned start: 3 free IDs under the root in every package */
 
-    const start = await fresh({ link: PLACE.MIXED, launch: false });
+    const start = await fresh({ launch: false });
     const investors = [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address);
     for (let pkg = 1; pkg <= 3; pkg++) await (await start.matrix.placeFree(investors, pkg)).wait();
     const rootBefore = await Promise.all([ 1, 2, 3 ].map((pkg) => start.matrix.positionsOf(1, pkg)));
@@ -165,12 +163,12 @@ export default async function (t) {
     check("planned start: after launch every board completes with exactly one price kept (none short)", completed.length > 0 && short.length === 0, `${completed.length} boards completed, ${short.length} short`);
     const freeAfter = (await start.matrix.queryFilter(start.matrix.filters.Placed(), launchBlock + 1)).filter((e) => Number(e.args.kind) === 3);
     check("planned start: no free ID is placed after launch", freeAfter.length === 0);
-    const [ startHeld ] = await start.matrix.getTotals();
+    const [ startHeld ] = await totals(start.matrix);
     check("planned start: money still adds up (held = token balance)", startHeld === (await token.balanceOf(start.address)));
 
     /* ------------------------------------ 4. a 400-level deep line */
 
-    const deep = await fresh({ link: PLACE.CURRENT });
+    const deep = await fresh();
     let sponsor = 1;
     const gas = [];
     for (let i = 0; i < 400; i++) {

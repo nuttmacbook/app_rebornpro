@@ -1,9 +1,9 @@
 import { t } from "../../lang";
-import { money, address, WRAP, pageHead, blockHead, button, row, errorBox, loadingBox } from "../componants/parts";
+import { money, moneyText, address, WRAP, pageHead, blockHead, button, row, errorBox, loadingBox } from "../componants/parts";
 import { packageName } from "../componants/ring";
 
 /*
- * YOUR CODE (off-chain). Owner tools: free IDs for investors (before launch only), launch, new packages,
+ * YOUR CODE (off-chain). Owner tools: free IDs for investors (before launch only), paid sign-ups for others, launch, new packages,
  * pausing a package. Anyone can open the page; only the owner wallet can send these transactions.
  */
 
@@ -34,6 +34,20 @@ const freeForm = (data) => /*html*/`
                 ${data.packages.map((p) => `<option value="${p.pkg}">${packageName(data, p.pkg)}</option>`).join("")}
             </select>
             ${button(t("Place free IDs"), "doPlaceFree()", { full: false })}
+        </div>
+    </div>
+`;
+
+const paidForm = (data) => /*html*/`
+    <div class="plate p-5 sm:p-6">
+        ${blockHead(t("Sign up others, paid"), t("{price} each", { price: moneyText(data, data.packages[0]?.price ?? 0n) }))}
+        <p class="mt-2 text-[14px] text-cinder">${t("New wallets join package 1 under the sponsor you choose, like a normal sign-up: the owner wallet pays the price for each, and the money is split the same way. The sponsor gets the referral pay of every later entry. Up to 50 at a time.")}</p>
+        <label class="sr-only" for="paid-wallets">${t("Wallets to sign up")}</label>
+        <textarea id="paid-wallets" data-paid-wallets rows="4" wrap="off" placeholder="0x…" spellcheck="false" class="field mt-4 text-[14px]"></textarea>
+        <div class="mt-3 flex flex-col gap-3 sm:flex-row">
+            <label class="sr-only" for="paid-sponsor">${t("Sponsor ID")}</label>
+            <input id="paid-sponsor" data-paid-sponsor type="text" autocomplete="off" spellcheck="false" placeholder="${t("Sponsor ID (empty = root)")}" class="field min-w-0 sm:flex-1" />
+            ${button(t("Sign up and pay"), "doRegisterFor()", { full: false })}
         </div>
     </div>
 `;
@@ -76,7 +90,7 @@ const ownerPage = (data) => /*html*/`
     <main class="${WRAP} flex flex-col gap-6 py-10 sm:py-14">
         ${pageHead(t("Owner tools"), data.isOwner ? t("You are connected with the owner wallet.") : t("Only the owner wallet can use these. Connect it to continue."))}
         <div class="grid gap-6 lg:grid-cols-2">
-            <div class="flex flex-col gap-6">${data.owner.launched ? "" : freeForm(data)}${packagesCard(data)}</div>
+            <div class="flex flex-col gap-6">${data.owner.launched ? "" : freeForm(data)}${paidForm(data)}${packagesCard(data)}</div>
             <div class="flex flex-col gap-6">${status(data)}${data.owner.launched ? "" : launchCard}</div>
         </div>
     </main>

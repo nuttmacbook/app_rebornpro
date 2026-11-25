@@ -6,7 +6,7 @@
  */
 
 import { ethers } from "ethers";
-import { proxied } from "../engine/deploy-steps.mjs";
+import { proxied, plain } from "../engine/deploy-steps.mjs";
 import { planOf, companyWalletsOf } from "../project/plan.mjs";
 
 const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
@@ -18,24 +18,30 @@ export default {
     }),
 
     contracts: [
+        // Read-only half of RebornMatrix (page views); RebornMatrix runs it on its own storage
+        plain({ name: "RebornViews" }),
+
         ...proxied({
             name: "RebornMatrix",
             init: (ctx) => {
                 const s = ctx.settings.RebornMatrix;
-                return [ ctx.owner, s.TOKEN_ADDRESS, s.ROOT_WALLET, companyWalletsOf(s), planOf(s) ];
+                return [ ctx.owner, s.TOKEN_ADDRESS, s.ROOT_WALLET, companyWalletsOf(s), ctx.addresses.RebornViews, planOf(s) ];
             },
-            readBack: async (contract) => {
-                const plan = await contract.getPlanView();
-                const settings = await contract.getSettings();
+            readBack: async (contract, ctx) => {
+                // Reads go to the proxy with RebornViews' ABI (the proxy's fallback runs them)
+                const reads = ctx.at("RebornViews", contract.target);
+                const plan = await reads.getPlanView();
+                const settings = await reads.getSettings();
+                const owner = await reads.getOwnerView();
                 return {
                     owner: await contract.owner(),
                     token: await contract.token(),
-                    root: (await contract.getOwnerView()).root,
-                    companies: [ ...(await contract.getOwnerView()).companies ],
+                    views: await contract.views(),
+                    root: owner.root,
+                    companies: [ ...owner.companies ],
                     tokenDecimals: Number(plan.tokenDecimals),
                     prices: plan.packages.map((p) => String(p.price)),
                     referralBps: Number(settings.referralBps),
-                    placement: Number(settings.placement),
                 };
             },
             check: (state, ctx) => {
@@ -49,7 +55,7 @@ export default {
                 if (state.tokenDecimals !== Number(s.TOKEN_DECIMALS)) return `The token has ${state.tokenDecimals} decimals but TOKEN_DECIMALS is ${s.TOKEN_DECIMALS}.`;
                 if (state.prices.join(",") !== plan.prices.map(String).join(",")) return "Package prices differ from PACKAGE_PRICES.";
                 if (state.referralBps !== Number(plan.referralBps)) return "Referral share differs from REFERRAL_PERCENT.";
-                if (state.placement !== Number(plan.placement)) return "Placement mode differs from PLACEMENT.";
+                if (!same(state.views, ctx.addresses.RebornViews)) return "RebornMatrix does not point at the RebornViews just deployed.";
                 return true;
             },
         }),
