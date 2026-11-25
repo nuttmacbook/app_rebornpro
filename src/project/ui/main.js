@@ -80,7 +80,7 @@ const boardParams = () => {
 // Last dashboard data, for names in toasts
 let homeData = null;
 
-const pages = {
+const rawPages = {
     home: { load: async (wallet) => { homeData = await getHomeData(wallet, { ref: sponsorRef() }); return homeData; }, view: home, loading: homeLoading, error: homeError },
     plan: { load: getPlanData, view: plan, loading: planLoading, error: planError },
     board: { load: (wallet) => getBoardData(wallet, boardParams()), view: board, loading: boardLoading, error: boardError },
@@ -89,11 +89,24 @@ const pages = {
     owner: { load: getOwnerData, view: ownerPage, loading: ownerLoading, error: ownerError },
 };
 
+/*
+ * What the engine gets: `loading` as plain HTML, and the footer drawn by each view in the current language.
+ * Not an object with toString(): a production build (Rollup tree-shaking) drops that property and the page
+ * shows "[object Object]". Not a function in `loading`: the engine pastes it as text.
+ */
+const withFooter = (draw) => (...args) => draw(...args) + footer();
+const pages = Object.fromEntries(Object.entries(rawPages).map(([ name, p ]) => [ name, {
+    load: p.load,
+    view: withFooter(p.view),
+    loading: typeof p.loading === "function" ? p.loading() : p.loading,
+    error: withFooter(p.error),
+} ]));
+
 mountBackdrop();
 // Maintenance (VITE_MAINTENANCE=on): one static screen, no wallet, no chain reads; the buttons below are never drawn
 const isClosed = isMaintenance();
 if (isClosed) showMaintenance();
-const app = isClosed ? null : startApp({ pages, header, footer, notify });
+const app = isClosed ? null : startApp({ pages, header, footer: "", notify });
 
 /* ------------------------------------ dev mode: switch between real numbers and codes (VITE_APP_MODE=dev) */
 
