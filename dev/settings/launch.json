@@ -1,0 +1,32 @@
+{
+    "// what this is": "SETTINGS. The go-live setup, done by the owner wallet before Launch: free IDs first, then paid sign-ups. On the local test chain npm run dev does exactly this (dev/project/seed.mjs); on the real chain the owner does it on the Owner tools page in this order. See README section 12.",
+    "owner": "0xC652c92cB73eBf9797EE9FbD13653eACB8EEF733",
+    "freeIds": {
+        "// how": "Each wallet gets a free ID under the root in every listed package (members 02, 03, 04 when placed first).",
+        "packages": [ 1, 2, 3 ],
+        "wallets": [
+            "0x617E6BcAaC722d3A1bf45Cd6d7404BC23Ec0BC3D",
+            "0x888C31730AB77e8aD0141C1013446B74629aB45C",
+            "0xA7Ec33B2065dC6d01Aa722CE9df4444987a72D9A"
+        ]
+    },
+    "paidSignUps": {
+        "// how": "Package 1, paid by the owner wallet, in this order, each placed as if it had signed up by itself (members 05 to 17).",
+        "sponsor": 1,
+        "wallets": [
+            "0xFA3504354494b7d7c7afd040a2bB7558390CB528",
+            "0x130F6E3e1649574b17E174745abC78c10a43d46c",
+            "0xf20C8114Dd85A91b2b8373F2bD5e710a6B59f678",
+            "0x4962c65d787eD960efF3593B15720a95797c8d7A",
+            "0x14dc0EbceC5E72EB6F0e3D224da0366994136069",
+            "0xB0497126A29a757f0A882135EC355fEaF7Bc4565",
+            "0xF86729384fd1e1EC2ccE3F74B5Cd47fd7FcC6A78",
+            "0x3ea2685Dc89cC914874b4C72B0045464Dc0C2fD4",
+            "0x3e2737bC584252b2ba5F71eEaa4c623a24762846",
+            "0x113846adF26D09B4FF3290184857A671e52BD9A3",
+            "0x4DA554b65AEaB6057a925a5E3CCF07E03436539b",
+            "0x13aFFEBd5D7A242478146D8b6D3F141965275BEc",
+            "0x59EF2B2ec8D49968fea0aa4e9eA0eF45144F0510"
+        ]
+    }
+}

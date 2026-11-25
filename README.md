@@ -44,10 +44,11 @@ reborn-pro/
 ├── src/project/ui/                  ✏️  off-chain: main.js, pages/ (home, plan, board, team, owner), componants/, main.css (ธีมดำ-แดง, ฟอนต์ IBM Plex Sans Thai)
 ├── dev/settings/contracts/RebornMatrix.env  ⚙️  token, ROOT_WALLET, PRODUCT / MARKETING / TREASURY_WALLET, ราคา, เปอร์เซ็นต์, STEPS_PER_TX
 ├── dev/project/contracts/RebornMatrix.sol   ✏️  2 contract ในไฟล์เดียว: RebornMatrix (ทุกอย่างที่เขียน/ย้ายเงิน, หลัง proxy) + RebornViews (ฟังก์ชันอ่านทั้งหมด)
+├── dev/settings/launch.json         ⚙️  วันเปิด: owner, ไอดีฟรี 3 กระเป๋า + แพ็กเกจ, สมัครให้ 13 กระเป๋า (ใช้ทั้งเทสและเป็นรายการให้ owner ทำตาม)
 ├── dev/project/reborn.mjs           ✏️  รวม ABI ของ 2 contract ให้สคริปต์/เทสเรียกที่ address เดียว, deploy ชุดใหม่ในเทส
 ├── dev/project/plan.mjs             ✏️  แปลง .env → PlanInput (หยุดพร้อมชื่อ key ถ้าค่าผิด)
 ├── dev/project/model.mjs            ✏️  โมเดล JS ใช้เป็นเฉลยในเทสเท่านั้น
-├── dev/project/test/                ✏️  RebornMatrix.test.mjs (ทั้งแผน), Placement.test.mjs (ตำแหน่ง), History.test.mjs, OwnerSignUp.test.mjs
+├── dev/project/test/                ✏️  RebornMatrix.test.mjs (ทั้งแผน), Placement.test.mjs (ตำแหน่ง), History.test.mjs, OwnerSignUp.test.mjs, LaunchSetup.test.mjs (วันเปิดด้วยกระเป๋าจริง)
 └── dev/project/seed.mjs, devActions.js  ✏️  ข้อมูลตัวอย่าง + ปุ่มในแผงทดสอบ
 ```
 
@@ -59,15 +60,16 @@ reborn-pro/
 npm install                 # ที่ root (เว็บ)
 cd dev && npm install       # contract + เครื่องมือ
 cp ../settings/.env.example ../settings/.env
-npm run dev                 # เชนในเครื่อง + deploy contract ใหม่ (มีแค่ Root, ยังไม่ launch, ไม่มีสมาชิก) + เปิดเว็บ
-npm run dev -- --seed 40    # ถ้าอยากได้ข้อมูลตัวอย่าง: จุดฟรี 3 นักลงทุนทุกแพ็กเกจ + launch + 40 คน
+npm run dev                 # เชนในเครื่อง + deploy contract + ตั้งค่าวันเปิดจาก dev/settings/launch.json (ยังไม่ Launch) + เปิดเว็บ
+npm run dev -- --seed 40    # เหมือนข้างบน แล้ว Launch + คนสมัครสุ่มอีก 39 คน
+npm run dev -- --seed 0     # สัญญาเปล่า: มีแค่ Root ยังไม่ launch ไม่มีสมาชิก
 ```
 
-ค่าเริ่มต้น `LOCAL_SEED=0` ใน `dev/settings/local.env` = เริ่มจากศูนย์ ลองเป็น owner เอง:
+ค่าเริ่มต้น `LOCAL_SEED=1` ใน `dev/settings/local.env` = สภาพเหมือนวันก่อนกด Launch จริง (ดูข้อ 12) ลองต่อเอง:
 1. แผงทดสอบ (มุมซ้ายล่าง) → **Demo wallet: off** ให้เป็น on → **+1 BNB (gas)**
-2. **Make me the contract owner** (ใช้ได้เฉพาะเชนในเครื่อง)
-3. **Copy 3 investor addresses** → ไปหน้า Owner tools (ลิงก์ท้ายหน้า) → วางในช่อง Free IDs → **Place free IDs**
-4. ติ๊กยืนยัน → **Launch** → ใช้ "3 / 12 people join under me" สร้างสมาชิกต่อ
+2. **Make me the contract owner** (ใช้ได้เฉพาะเชนในเครื่อง: โอนสิทธิ์ owner จากกระเป๋า owner จริงมาที่ demo wallet)
+3. ไปหน้า Owner tools (ลิงก์ท้ายหน้า) → ติ๊กยืนยัน → **Launch**
+4. ใช้ "3 / 12 people join under me" สร้างสมาชิกต่อ
 
 ไอดีฟรีแสดงในเว็บเหมือนไอดีที่สมัครปกติ (Sign-up) มีแค่หน้า Owner ที่นับจำนวนไอดีฟรี
 
@@ -140,7 +142,7 @@ deploy / upgrade / verify: ดู `dev/README.md` (`npm run deploy:live`, `--sen
 ## 10. owner สมัครให้คนอื่นแบบจ่ายเงิน
 
 - หน้า Owner tools → การ์ด "Sign up others, paid": ใส่กระเป๋าใหม่ (ครั้งละไม่เกิน 50) และไอดีผู้แนะนำ (ว่าง = Root) แล้วกด "Sign up and pay"
-- กระเป๋า owner จ่ายราคาแพ็กเกจ 1 แทนทุกกระเป๋า (เว็บขอ approve ยอดรวมก่อน แล้วส่ง `registerFor` 1 ธุรกรรม)
+- กระเป๋า owner จ่ายราคาแพ็กเกจ 1 แทนทุกกระเป๋า (เว็บขอ approve ยอดรวมก่อน แล้วส่ง `registerFor` 1 ธุรกรรม) แต่ละกระเป๋าถูกวางผังก่อนกระเป๋าถัดไปสมัคร ผลจึงเหมือนสมัครเองทีละคนตามลำดับ
 - เงินแบ่งเหมือนการสมัครปกติทุกอย่าง: ผู้แนะนำได้ 30% และได้ค่าแนะนำจากทุกการเข้าครั้งต่อไปของคนนั้น, ช่องจ่ายตามปกติ, บริษัท 10%
 - ใช้ได้ทั้งก่อนและหลัง Launch; ต่างจากไอดีฟรีที่ไม่มีเงินเข้า และใช้ได้เฉพาะก่อน Launch
 - สมัครให้ได้เฉพาะแพ็กเกจ 1 สมาชิกอัปเกรดเองตามปกติ
@@ -159,3 +161,28 @@ deploy / upgrade / verify: ดู `dev/README.md` (`npm run deploy:live`, `--sen
 - **verify บน BscScan**: verify ทั้ง RebornViews, RebornMatrixImplementation และ proxy (`npm run verify` พิมพ์ข้อมูลให้ครบ); บน BscScan หน้า RebornMatrix จะเห็นปุ่มอ่านเฉพาะของ RebornMatrix ส่วนฟังก์ชันอ่านของหน้าเว็บให้ดูที่หน้า RebornViews (อ่านค่าจริงผ่านเว็บ)
 - **แก้ฟังก์ชันอ่านทีหลัง** (ไม่ต้อง upgrade proxy): แก้ RebornViews → `npm run deploy:live -- --send --redeploy RebornViews` → owner เรียก `setViews(<address ใหม่>)` (BscScan → Write as Proxy) → รัน `deploy:live` อีกครั้งให้บันทึกตรง
 - **ห้าม** ใส่ฟังก์ชันที่เขียนข้อมูลใน RebornViews และตัวแปรใหม่ใส่ท้าย `RebornStorage` เท่านั้น (สองสัญญาใช้ storage ชุดเดียวกัน)
+
+## 12. ตั้งค่าวันเปิด (กระเป๋าจริงของลูกค้า)
+
+ค่าทั้งหมดอยู่ใน `dev/settings/contracts/RebornMatrix.env` (กระเป๋าบริษัท + Root) และ `dev/settings/launch.json` (owner, ไอดีฟรี, สมัครให้)
+
+| บทบาท | กระเป๋า |
+| --- | --- |
+| Owner (เจ้าของสัญญา + admin ของ proxy; `DEPLOY_OWNER`) | `0xC652c92cB73eBf9797EE9FbD13653eACB8EEF733` |
+| Root (ไอดี 01) | `0xcdBa21fE91ac9BD8e24e71Cee435eaF9597bD0CF` |
+| Product 5% | `0x36aD28CFDBcBBF99E0ADF97EaD155148939638fB` |
+| Marketing 2.5% | `0x2B7d1004D17174c6f633cd5A06F8F70F9ee741C4` |
+| Treasury 2.5% | `0x3Ff5e13EfEdeC035E7602b6D73B95bBc0654Bd8d` |
+
+เหรียญ: USDT บน BSC ไปก่อน (เหรียญของลูกค้ามาตรฐานเดียวกัน แก้ `TOKEN_ADDRESS` / `TOKEN_DECIMALS` ก่อน deploy เมื่อได้ address)
+
+**ลำดับวันเปิด** (owner ทำที่หน้า Owner tools ด้วยกระเป๋า owner — ตามลำดับนี้ เลขสมาชิกจึงตรงกับรายการ)
+
+1. deploy (`npm run deploy:live -- --send`) แล้ว verify
+2. **Free IDs for investors** → วาง 3 กระเป๋าใน `launch.json` → `freeIds` ทีละแพ็กเกจ: Package 10, Package 50, Package 100 (3 ธุรกรรม) → เป็นสมาชิก 02, 03, 04
+3. **Sign up others, paid** → วาง 13 กระเป๋าใน `launch.json` → `paidSignUps` ตามลำดับ เว้นช่องผู้แนะนำ (= Root) → approve 130 USDT + สมัคร 1 ธุรกรรม → เป็นสมาชิก 05–17 (กระเป๋า owner ต้องมี 130 USDT + BNB ค่าแก๊ส)
+4. ตรวจหน้า Board / History แล้วติ๊กยืนยัน → **Launch**
+
+ผลที่คาดไว้ (เทส `LaunchSetup.test.mjs` ยืนยันกับสัญญาจริงแล้ว): ผัง Root ทั้ง 3 แพ็กเกจเต็มด้วยไอดีฟรีและ Reborn ฟรี 1 ครั้ง; แพ็กเกจ 10 มี 23 ไอดีหลังสมัครให้ 13 คน; เงิน 130 USDT ไปที่ Root 59, 02 = 10, 03 = 8, 04 = 8, 05 / 07 / 10 / 13 คนละ 6, Product 10.5, Marketing 5.25, Treasury 5.25 (ไม่มีเงินค้างในสัญญา)
+
+`registerFor` วางผังหลังสมัครแต่ละกระเป๋า: ใส่ 13 กระเป๋าในครั้งเดียวได้ผลเหมือน 13 คนสมัครเองทีละคนทุกประการ (เทสเทียบสัญญา 2 ชุดแล้ว)

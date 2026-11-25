@@ -2,6 +2,8 @@
  * YOUR CODE (on-chain, local only). Sample data for the local test chain, plus helpers the tests reuse.
  * The contract itself is deployed by the engine from dev/settings/deploy.config.mjs (same as the real deploy).
  *
+ * goLiveSetup() replays dev/settings/launch.json (owner wallet, free IDs, paid sign-ups) like the owner will on the real chain.
+ *
  * deployed (from dev/engine/local-chain.mjs):
  *   rebornAt(deployed)   the contract at its proxy address
  *   deployed.tokens.USDT          test token from dev/settings/test-tokens.json ({ contract, address, decimals })
@@ -10,6 +12,7 @@
 import { ethers } from "ethers";
 import { TX_GAS, setBalance } from "../engine/node.mjs";
 import { rebornAt } from "./reborn.mjs";
+import { launchOf } from "./plan.mjs";
 
 /** Money totals [held, paidIn, referral, boardPaid, company] from the home view (same numbers the site shows) */
 const totals = async (m) => {
@@ -50,24 +53,52 @@ async function upgrader(deployed, person, pkg) {
 }
 
 /**
- * Called by npm run dev: 3 investors placed free in every package, launch, then `count` people
- * (LOCAL_SEED in dev/settings/local.env) join under earlier members; every third one upgrades.
+ * Called by npm run dev when LOCAL_SEED > 0. First the go-live setup from dev/settings/launch.json, exactly as the
+ * owner will do it on the real chain (README section 12):
+ *   1. the contract's owner becomes launch.json's owner wallet (this local chain lets us send as it without its key)
+ *   2. free IDs for launch.json's wallets under the root, in each of its packages
+ *   3. paid sign-ups of launch.json's wallets into package 1 (the owner wallet pays), in order
+ * LOCAL_SEED = 1 stops there, not launched: the state on the day before Launch. Above 1: launch, then LOCAL_SEED - 1
+ * random people join under earlier members (every third upgrades).
  */
 async function seed({ provider, deployed, count, onProgress = () => {} }) {
     const matrix = rebornAt(deployed);
-    const investors = [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address);
-    const packages = Number(await matrix.packageCount());
-    for (let pkg = 1; pkg <= packages; pkg++) await (await matrix.placeFree(investors, pkg, { gasLimit: TX_GAS })).wait();
-    await (await matrix.launchPublic()).wait();
+    const launch = launchOf(deployed.settings.RebornMatrix);
+    await goLiveSetup({ provider, deployed, launch, isLaunched: count > 1 });
+    onProgress(1);
 
     const people = [];
-    for (let i = 1; i <= count; i++) {
+    for (let i = 2; i <= count; i++) {
         const sponsor = people.length ? people[Math.floor(Math.random() * people.length)].id : 1;
         const member = await joiner(provider, deployed, sponsor);
         people.push(member);
         if (i % 3 === 0) await upgrader(deployed, member.wallet, 2);
         if (i % 9 === 0) await upgrader(deployed, member.wallet, 3);
         onProgress(i);
+    }
+    return matrix;
+}
+
+/** Steps 1 to 3 above, sent as launch.owner (impersonated on the local chain), then Launch when asked */
+async function goLiveSetup({ provider, deployed, launch, isLaunched = false }) {
+    const matrix = rebornAt(deployed);
+    if ((await matrix.owner()).toLowerCase() !== launch.owner.toLowerCase()) await (await matrix.transferOwnership(launch.owner)).wait();
+    await setBalance(provider, launch.owner, 10);
+    await provider.send("hardhat_impersonateAccount", [ launch.owner ]);
+    try {
+        const owner = await provider.getSigner(launch.owner);
+        const asOwner = matrix.connect(owner);
+        for (const pkg of launch.packages) await (await asOwner.placeFree(launch.free, pkg, { gasLimit: TX_GAS })).wait();
+        if (launch.paid.length) {
+            const total = (await matrix.getPackage(1)).price * BigInt(launch.paid.length);
+            const token = deployed.tokens.USDT.contract.connect(owner);
+            await (await token.mint(launch.owner, total)).wait();
+            await (await token.approve(deployed.addresses.RebornMatrix, total)).wait();
+            await (await asOwner.registerFor(launch.paid, launch.sponsor, { gasLimit: 30_000_000n })).wait();
+        }
+        if (isLaunched) await (await asOwner.launchPublic()).wait();
+    } finally {
+        await provider.send("hardhat_stopImpersonatingAccount", [ launch.owner ]);
     }
 }
 
@@ -82,4 +113,4 @@ async function summary(deployed) {
     ];
 }
 
-export { newPerson, payFor, joiner, upgrader, seed, summary };
+export { newPerson, payFor, joiner, upgrader, seed, goLiveSetup, summary };

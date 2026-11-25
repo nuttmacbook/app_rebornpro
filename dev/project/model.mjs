@@ -55,15 +55,9 @@ class RebornModel {
         return id;
     }
 
-    /** registerFor(accounts, sponsorId) by the owner: all sign up first, then one round of placing */
+    /** registerFor(accounts, sponsorId) by the owner: like register() for each wallet, one after another */
     registerFor(accounts, sponsor) {
-        const ids = accounts.map((account) => {
-            const id = this.newMember(account, sponsor);
-            this.buy(id, 1, KIND.SIGN_UP);
-            return id;
-        });
-        this.process(this.steps);
-        return ids;
+        return accounts.map((account) => this.register(account, sponsor));
     }
 
     upgrade(account, pkg) {

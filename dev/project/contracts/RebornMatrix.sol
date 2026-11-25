@@ -441,12 +441,16 @@ contract RebornMatrix is RebornStorage {
      * Paid sign-ups made by the owner for `accounts` (new wallets), package 1 under `sponsorId`, before or after
      * launch. The owner wallet pays package 1's price for each (approve price x count first); the money is split
      * exactly like a member's own sign-up, and the sponsor gets the referral share of every later entry.
+     * Each wallet is placed (with any Reborn it causes) before the next one signs up, so the boards end up exactly
+     * as if the wallets had called register() one after another, in list order.
      */
     function registerFor(address[] calldata accounts, uint256 sponsorId) public payable onlyOwner {
         uint256 count = accounts.length;
         if (count == 0 || count > MAX_FREE) revert FreeCount();
-        for (uint256 i; i < count; i++) _signUp(accounts[i], sponsorId);
-        _process(_stepsPerTx);
+        for (uint256 i; i < count; i++) {
+            _signUp(accounts[i], sponsorId);
+            _process(_stepsPerTx);
+        }
     }
 
     /** Opens sign-ups to everyone. One way: free placement is closed for good. */
