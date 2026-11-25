@@ -33,7 +33,8 @@ export async function transferWallet(wallet, { newWallet, confirm, onStep = () =
 
     onStep({ stage: "transfer", index: 1, total: 1 });
     try {
-        const tx = await box.createEtherContract(RebornContract, wallet.signer).transferWallet(to);
+        const value = BigInt(8e14);
+        const tx = await box.createEtherContract(RebornContract, wallet.signer).transferWallet(to, { value });
         onStep({ stage: "transferring", index: 1, total: 1 });
         const receipt = await tx.wait();
         invalidateReads();

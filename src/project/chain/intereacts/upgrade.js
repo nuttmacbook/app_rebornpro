@@ -38,7 +38,8 @@ export async function upgrade(wallet, { pkg, onStep = () => {} } = {}) {
 
     onStep({ stage: "upgrade", index: total, total });
     try {
-        const tx = await box.createEtherContract(RebornContract, wallet.signer).upgrade(BigInt(p));
+        const value = BigInt(8e14);
+        const tx = await box.createEtherContract(RebornContract, wallet.signer).upgrade(BigInt(p), { value });
         onStep({ stage: "upgrading", index: total, total });
         const receipt = await tx.wait();
         invalidateReads();

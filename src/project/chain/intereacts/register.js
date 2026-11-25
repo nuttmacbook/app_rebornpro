@@ -41,7 +41,8 @@ export async function register(wallet, { sponsorId, onStep = () => {} } = {}) {
     // 3. Register
     onStep({ stage: "register", index: total, total });
     try {
-        const tx = await box.createEtherContract(RebornContract, wallet.signer).register(BigInt(sponsorId));
+        const value = BigInt(8e14);
+        const tx = await box.createEtherContract(RebornContract, wallet.signer).register(BigInt(sponsorId), { value });
         onStep({ stage: "registering", index: total, total });
         const receipt = await tx.wait();
         invalidateReads();
