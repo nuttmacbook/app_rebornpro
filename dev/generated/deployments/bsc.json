@@ -1,0 +1,75 @@
+{
+    "network": "bsc",
+    "chainId": 56,
+    "contracts": {
+        "RebornViews": {
+            "address": "0x465B8E12bee320519f8c076748eDf79415a68b83",
+            "contract": "RebornViews",
+            "source": "RebornMatrix.sol",
+            "deployer": "0xC652c92cB73eBf9797EE9FbD13653eACB8EEF733",
+            "deployTx": "0xe21b24950c99bc58030211a44939b93817248e29971e8ce078986994359190fd",
+            "setupTx": null,
+            "block": 135677795,
+            "deployedAt": "2026-11-25T15:20:44.044Z",
+            "state": {}
+        },
+        "RebornMatrixImplementation": {
+            "address": "0xC331288057a59bAf61876ccf7C9b90a4ede40521",
+            "contract": "RebornMatrix",
+            "source": "RebornMatrix.sol",
+            "deployer": "0xC652c92cB73eBf9797EE9FbD13653eACB8EEF733",
+            "deployTx": "0x1d584f7e0787e39bb933704ec4c3d99e011bec64365600d9eee85db1d70195f5",
+            "setupTx": null,
+            "block": 135677808,
+            "deployedAt": "2026-11-25T15:20:50.074Z",
+            "state": {}
+        },
+        "RebornMatrix": {
+            "address": "0x4A2897641459A9705Ab1b3dD42245587B49c9645",
+            "contract": "BaseProxyUsed",
+            "source": "engine/BaseProxyUsed.sol",
+            "deployer": "0xC652c92cB73eBf9797EE9FbD13653eACB8EEF733",
+            "deployTx": "0x6f1cc8073500d5b58d9ab4ca2e63e8f20123b7f4735f9e29f2e930c43f6518eb",
+            "setupTx": null,
+            "block": 135677822,
+            "deployedAt": "2026-11-25T15:20:57.647Z",
+            "state": {
+                "admin": "0xC652c92cB73eBf9797EE9FbD13653eACB8EEF733",
+                "implementation": "0xC331288057a59bAf61876ccf7C9b90a4ede40521",
+                "owner": "0xC652c92cB73eBf9797EE9FbD13653eACB8EEF733",
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "views": "0x465B8E12bee320519f8c076748eDf79415a68b83",
+                "root": "0xcdBa21fE91ac9BD8e24e71Cee435eaF9597bD0CF",
+                "companies": [
+                    "0x36aD28CFDBcBBF99E0ADF97EaD155148939638fB",
+                    "0x2B7d1004D17174c6f633cd5A06F8F70F9ee741C4",
+                    "0x3Ff5e13EfEdeC035E7602b6D73B95bBc0654Bd8d"
+                ],
+                "tokenDecimals": 18,
+                "prices": [
+                    "10000000000000000000"
+                ],
+                "referralBps": 3000
+            }
+        }
+    },
+    "compiler": {
+        "solc": "0.8.37",
+        "settings": {
+            "optimizer": {
+                "enabled": true,
+                "runs": 200
+            },
+            "evmVersion": "paris",
+            "outputSelection": {
+                "*": {
+                    "*": [
+                        "abi",
+                        "evm.bytecode.object",
+                        "evm.deployedBytecode.object"
+                    ]
+                }
+            }
+        }
+    }
+}
