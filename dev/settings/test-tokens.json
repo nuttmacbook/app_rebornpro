@@ -1,0 +1,6 @@
+{
+    "// what this is": "SETTINGS. Test tokens the local chain (npm run dev, npm test) deploys, and which contract settings they stand in for. Anyone can mint them from the test panel.",
+    "tokens": [
+        { "symbol": "USDT", "name": "Test USDT", "decimals": 18, "replaces": [ "RebornMatrix.TOKEN_ADDRESS" ] }
+    ]
+}

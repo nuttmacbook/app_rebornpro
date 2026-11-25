@@ -1,0 +1,16 @@
+{
+    "// how to use": "SETTINGS. file = where the ABI goes, export = name to import, only = functions/events/errors the app uses. Addresses come from src/generated/addresses.json by contract name, never from .env.",
+    "RebornMatrix": {
+        "file": "src/generated/contracts/rebornmatrix.js",
+        "export": "RebornContract",
+        "only": [
+            "register", "upgrade", "processQueue", "transferWallet",
+            "placeFree", "launchPublic", "addPackage", "setPackageOpen", "setStepsPerTx", "setCompanyWallet", "setRootWallet",
+            "getHomeView", "getPlanView", "getBoardView", "getTeamView", "getHistoryView", "getOwnerView",
+            "OnlyOwner", "ZeroAddress", "RootAndCompanyMustDiffer", "PackageCount", "ZeroPrice", "StepsPerTx",
+            "NotLaunched", "AlreadyLaunched", "AlreadyRegistered", "UnknownSponsor", "PaymentFailed", "NotAMember",
+            "UnknownPackage", "PackageClosed", "AlreadyHasPackage", "NeedsThePackageBefore", "QueueIsEmpty", "ZeroSteps",
+            "AlreadyAMember", "FreeCount", "TransferFailed", "UnknownPosition"
+        ]
+    }
+}
