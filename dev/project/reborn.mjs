@@ -42,4 +42,14 @@ async function deployReborn(signer, contracts, { owner, token, root, companies, 
 /** RebornMatrix from a local deploy (seed, devActions-like scripts), merged with RebornViews */
 const rebornAt = (deployed, signer = undefined) => withViews(deployed.at("RebornMatrix", signer), deployed.at("RebornViews"));
 
-export { mergeAbi, withViews, deployReborn, rebornAt };
+/**
+ * Tests only: the packages the owner adds after go-live (Owner page, Add package), in whole tokens.
+ * The deploy has package 10 only (PACKAGE_PRICES); tests that need an upgrade path add these.
+ */
+const LATER_PRICES = [ "50", "100" ];
+const laterPrices = (decimals) => LATER_PRICES.map((p) => ethers.parseUnits(p, decimals));
+
+/** `plan` with the later packages already in it (for a fresh test contract) */
+const withLaterPackages = (plan, decimals) => ({ ...plan, prices: [ ...plan.prices, ...laterPrices(decimals) ] });
+
+export { mergeAbi, withViews, deployReborn, rebornAt, laterPrices, withLaterPackages };

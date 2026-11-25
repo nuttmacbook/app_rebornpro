@@ -1,8 +1,8 @@
 /*
  * YOUR CODE (on-chain tests). The go-live setup from dev/settings/launch.json with the client's real wallets
  * (RebornMatrix.env), sent by the real owner address (impersonated on the test chain):
- *   - free IDs under the root in every listed package, then the paid sign-ups in order, then Launch
- *   - member numbers 02-04 for the free wallets and 05-17 for the paid ones, in list order
+ *   - package 10 only; the owner pays for every listed wallet's sign-up, in order, then Launch
+ *   - member numbers 02-17 in list order, all under the root, no free IDs anywhere
  *   - every position and every token sent matches the model doing it one sign-up at a time
  *   - registerFor ends exactly like the same wallets calling register() one by one (two fresh contracts compared)
  */
@@ -41,21 +41,17 @@ export default async function (t) {
     /* ------------------------------------ 1. the setup, by the real owner address */
 
     const model = new RebornModel(plan, s.ROOT_WALLET, companyWalletsOf(s));
-    for (const pkg of launch.packages) model.placeFree(launch.free, pkg);
     launch.paid.forEach((a) => model.register(a, launch.sponsor));
 
     const ownerBefore = await token.balanceOf(launch.owner);
     await goLiveSetup({ provider, deployed, launch, isLaunched: false });
     check("go-live: the contract owner is launch.json's owner", (await matrix.owner()) === launch.owner, launch.owner);
     check("go-live: not launched yet after the setup", (await matrix.getOwnerView()).launched === false);
-    const freeIds = await Promise.all(launch.free.map((a) => matrix.idOf(a)));
+    check("go-live: only package 10 exists", (await matrix.packageCount()) === 1n && (await matrix.getPackage(1)).price === plan.prices[0], units(plan.prices[0]));
     const paidIds = await Promise.all(launch.paid.map((a) => matrix.idOf(a)));
-    check("go-live: free wallets are members 02, 03, 04", freeIds.map(Number).join() === "2,3,4", freeIds.join(","));
-    check(`go-live: paid wallets are members 05 to ${String(4 + launch.paid.length).padStart(2, "0")}, in list order`, paidIds.every((id, i) => Number(id) === 5 + i));
-    const sponsors = await Promise.all([ ...launch.free, ...launch.paid ].map((a) => matrix.getHistoryView(a, 0, 0)));
+    check(`go-live: the ${launch.paid.length} wallets are members 02 to ${String(1 + launch.paid.length).padStart(2, "0")}, in list order`, paidIds.every((id, i) => Number(id) === 2 + i));
+    const sponsors = await Promise.all(launch.paid.map((a) => matrix.getHistoryView(a, 0, 0)));
     check("go-live: every one of them has the root as sponsor", sponsors.every((v) => v.sponsor === 1n));
-    const hasAll = await Promise.all(freeIds.map((id) => Promise.all(launch.packages.map((p) => matrix.hasPackage(id, p)))));
-    check("go-live: free wallets hold every listed package (1, 2, 3)", hasAll.flat().every(Boolean));
     const price1 = plan.prices[0];
     const paidByOwner = price1 * BigInt(launch.paid.length);
     const ownerAfter = await token.balanceOf(launch.owner);
@@ -63,7 +59,8 @@ export default async function (t) {
     const wrong = await sameAsModel(matrix, model);
     check("go-live: every position and payout matches the model doing it one sign-up at a time", wrong.length === 0, wrong.slice(0, 3).join(", "));
     const v = await matrix.getHomeView(ethers.ZeroAddress, 0);
-    check("go-live: nothing waits in the queue and nothing is left in the contract", v.queued === 0n && v.totalHeld === 0n && (await token.balanceOf(deployed.addresses.RebornMatrix)) === 0n);
+    check("go-live: nothing waits in the queue; what the contract holds is exactly the money kept on boards for Reborn", v.queued === 0n && v.totalHeld === model.held && v.totalHeld === (await token.balanceOf(deployed.addresses.RebornMatrix)), `${units(v.totalHeld)} USDT kept`);
+    check("go-live: money adds up (paid in = referral + boards + company + kept)", v.totalIn === v.totalReferral + v.totalBoardPaid + v.totalCompany + v.totalHeld);
     const paidOut = [ ...model.paid ].map(([ a, x ]) => `${a.slice(0, 6)} ${units(x)}`).join(", ");
     check("go-live: who got paid", true, paidOut);
 
@@ -77,19 +74,18 @@ export default async function (t) {
     await (await token.connect(person).approve(deployed.addresses.RebornMatrix, price1)).wait();
     await (await matrix.connect(person).register(5, { gasLimit: TX_GAS })).wait();
     model.register(person.address, 5);
+    check("go-live: after Launch, upgrading is refused while package 50 is not added yet", await t.doesRevert(() => matrix.connect(person).upgrade.staticCall(2), "UnknownPackage"));
     const wrong2 = await sameAsModel(matrix, model);
     check("go-live: after Launch, a public sign-up under member 05 still matches the model", wrong2.length === 0, wrong2.slice(0, 3).join(", "));
 
     /* ------------------------------------ 3. registerFor = the same wallets registering one by one */
 
-    const people = await Promise.all(Array.from({ length: 13 }, () => newPerson(provider)));
+    const people = await Promise.all(Array.from({ length: 16 }, () => newPerson(provider)));
     const make = async () => (await deployReborn(owner, contracts, { owner: owner.address, token: deployed.tokens.USDT.address, root: ethers.Wallet.createRandom().address, companies: [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address), plan })).contract;
     const a = await make();
     const b = await make();
-    const free = [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address);
-    for (const c of [ a, b ]) for (const pkg of [ 1, 2, 3 ]) await (await c.placeFree(free, pkg, { gasLimit: TX_GAS })).wait();
-    await (await token.mint(owner.address, price1 * 13n)).wait();
-    await (await token.approve(await a.getAddress(), price1 * 13n)).wait();
+    await (await token.mint(owner.address, price1 * 16n)).wait();
+    await (await token.approve(await a.getAddress(), price1 * 16n)).wait();
     await (await a.registerFor(people.map((p) => p.address), 1, { gasLimit: 30_000_000n })).wait();
     await (await b.launchPublic()).wait();
     for (const p of people) {
@@ -98,7 +94,7 @@ export default async function (t) {
         await (await b.connect(p).register(1, { gasLimit: TX_GAS })).wait();
     }
     const diff = [];
-    for (let pkg = 1; pkg <= 3; pkg++) {
+    for (let pkg = 1; pkg <= Number(await a.packageCount()); pkg++) {
         const n = Number((await a.getPackage(pkg)).positions);
         if (n !== Number((await b.getPackage(pkg)).positions)) diff.push(`pkg ${pkg} count`);
         for (let i = 0; i < n; i++) {
@@ -108,6 +104,6 @@ export default async function (t) {
     }
     const [ ha, hb ] = [ await a.getHomeView(ethers.ZeroAddress, 0), await b.getHomeView(ethers.ZeroAddress, 0) ];
     if (ha.totalReferral !== hb.totalReferral || ha.totalBoardPaid !== hb.totalBoardPaid || ha.totalCompany !== hb.totalCompany) diff.push("totals");
-    check("registerFor: 13 wallets in one transaction end exactly like 13 register() calls in a row", diff.length === 0, diff.slice(0, 3).join(", ") || `${Number((await a.getPackage(1)).positions)} IDs in package 1 on both`);
+    check("registerFor: 16 wallets in one transaction end exactly like 16 register() calls in a row", diff.length === 0, diff.slice(0, 3).join(", ") || `${Number((await a.getPackage(1)).positions)} IDs in package 1 on both`);
     await setBalance(provider, launch.owner, 0);
 }

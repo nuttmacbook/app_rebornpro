@@ -30,12 +30,12 @@
         },
         {
             "inputs": [],
-            "name": "CompanyWallets",
+            "name": "BatchCount",
             "type": "error"
         },
         {
             "inputs": [],
-            "name": "FreeCount",
+            "name": "CompanyWallets",
             "type": "error"
         },
         {
@@ -159,6 +159,6 @@
             "type": "error"
         }
     ],
-    "bytecode": "6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea26469706673582212203bc13a151d452061e3b0bc5b924614ff53d75dfb95717574d18d8efb9861cbb364736f6c63430008250033",
-    "deployedBytecode": "6080604052600080fdfea26469706673582212203bc13a151d452061e3b0bc5b924614ff53d75dfb95717574d18d8efb9861cbb364736f6c63430008250033"
+    "bytecode": "6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea26469706673582212207e7020e49828fee21b73a2a01694c7693b1bfee82f1de0db1987f85ab46026ed64736f6c63430008250033",
+    "deployedBytecode": "6080604052600080fdfea26469706673582212207e7020e49828fee21b73a2a01694c7693b1bfee82f1de0db1987f85ab46026ed64736f6c63430008250033"
 }

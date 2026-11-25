@@ -55,16 +55,14 @@ const heroRing = () => /*html*/`
 `;
 
 /**
- * How an ID came to be (Position.kind in the contract: 0 sign-up, 1 upgrade, 2 reborn, 3 free).
- * Free IDs for investors look exactly like a sign-up to members; only the Owner page counts them.
+ * How an ID came to be (Position.kind in the contract: 0 sign-up, 1 upgrade, 2 reborn).
  */
 const KINDS = [
     { label: "Sign-up", dot: "bg-bone" },
     { label: "Upgrade", dot: "bg-ember" },
     { label: "Reborn", dot: "bg-flame" },
 ];
-const FREE = 3;
-const kindOf = (kind) => KINDS[kind === FREE ? 0 : kind] ?? KINDS[0];
+const kindOf = (kind) => KINDS[kind] ?? KINDS[0];
 
 /** "Package 10" from the package price (whole tokens; decimals only when the price has them) */
 const packageName = (data, pkg) => {

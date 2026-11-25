@@ -7,7 +7,7 @@
 
 import { ethers } from "ethers";
 import { TX_GAS } from "../../engine/node.mjs";
-import { deployReborn } from "../reborn.mjs";
+import { deployReborn, withLaterPackages } from "../reborn.mjs";
 import { newPerson } from "../seed.mjs";
 import { planOf } from "../plan.mjs";
 import { RebornModel } from "../model.mjs";
@@ -16,7 +16,7 @@ export default async function (t) {
     const { provider, owner, stranger, contracts, deployed, check, doesRevert } = t;
     const token = deployed.tokens.USDT.contract;
     const s = t.settings.RebornMatrix;
-    const plan = planOf(s);
+    const plan = withLaterPackages(planOf(s), deployed.tokens.USDT.decimals);
 
     const root = ethers.Wallet.createRandom().address;
     const companies = [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address);
@@ -67,7 +67,7 @@ export default async function (t) {
     check("registerFor: the owner wallet paid 3 x the package 1 price", ownerBefore - (await token.balanceOf(owner.address)) === price1 * 3n);
     const h0 = await matrix.getHistoryView(first[0], 0, 5);
     check("registerFor: members are invited by the sponsor given (root)", h0.sponsor === 1n);
-    check("registerFor: counted as paid sign-ups, not free IDs", (await matrix.getOwnerView()).totalFree === 0n && (await totals()).paidIn === price1 * 3n);
+    check("registerFor: counted as paid sign-ups", (await totals()).paidIn === price1 * 3n);
     await matchesModel("3 paid sign-ups under the root before launch");
     check("registerFor: the public register stays closed before launch", await doesRevert(async () => {
         const w = await newPerson(provider);
@@ -112,8 +112,8 @@ export default async function (t) {
 
     await fundOwner(price1 * 60n);
     const before = await totals();
-    check("registerFor: empty list", await doesRevert(() => matrix.registerFor.staticCall([], 1), "FreeCount"));
-    check("registerFor: more than 50 wallets", await doesRevert(() => matrix.registerFor.staticCall(fresh(51), 1), "FreeCount"));
+    check("registerFor: empty list", await doesRevert(() => matrix.registerFor.staticCall([], 1), "BatchCount"));
+    check("registerFor: more than 50 wallets", await doesRevert(() => matrix.registerFor.staticCall(fresh(51), 1), "BatchCount"));
     check("registerFor: sponsor 0", await doesRevert(() => matrix.registerFor.staticCall(fresh(1), 0), "UnknownSponsor"));
     check("registerFor: sponsor that does not exist", await doesRevert(() => matrix.registerFor.staticCall(fresh(1), 9999), "UnknownSponsor"));
     check("registerFor: a wallet that already joined (whole batch stops)", await doesRevert(() => matrix.registerFor.staticCall([ ...fresh(2), next[0] ], 1), "AlreadyRegistered"));

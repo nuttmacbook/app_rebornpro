@@ -26,7 +26,7 @@ export const RebornContract = {
         },
         {
             "inputs": [],
-            "name": "FreeCount",
+            "name": "BatchCount",
             "type": "error"
         },
         {
@@ -135,24 +135,6 @@ export const RebornContract = {
         {
             "inputs": [],
             "name": "launchPublic",
-            "outputs": [],
-            "stateMutability": "payable",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "address[]",
-                    "name": "accounts",
-                    "type": "address[]"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "pkg",
-                    "type": "uint256"
-                }
-            ],
-            "name": "placeFree",
             "outputs": [],
             "stateMutability": "payable",
             "type": "function"

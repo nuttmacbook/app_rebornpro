@@ -10,8 +10,8 @@ pragma solidity 0.8.37;
  *   transferWallet(to)      moves the caller's whole account to a new wallet
  *
  * Owner:
- *   placeFree(accounts, pkg) free IDs for the project's investors, under the root, only before launchPublic()
- *   launchPublic()          opens sign-ups for everyone; free placement is closed for good
+ *   registerFor(accounts, s) paid sign-ups for other wallets (the owner pays), one after another, any time
+ *   launchPublic()          opens sign-ups and upgrades to everyone
  *   addPackage(price)       a new package at the end of the upgrade path (its board starts with the root)
  *   setPackageOpen(pkg, on) pause or resume sales of one package
  *
@@ -23,7 +23,6 @@ pragma solidity 0.8.37;
  *   - upgrade            the nearest sponsor up the line who holds this package (only to find a place:
  *                        the referral share still goes to the member's own sponsor)
  *   - reborn             the member's own, so it stays inside the member's team
- *   - free (investors)   the root's
  *
  * Money of every paid entry (new, upgrade or reborn), split by which slot it takes on the board above:
  *   referral share  -> the member's sponsor from sign-up, always (the root has none: company wallets)
@@ -31,7 +30,8 @@ pragma solidity 0.8.37;
  *   cash share      -> owner of the board above (slot 1: 60%, slots 2 and 3: 10%)
  *   reborn share    -> kept on the board above (slots 2 and 3: 50% each); at 3 filled slots it is exactly one
  *                      price and pays that member's next ID (Reborn), placed through the queue
- * Free entries move no money. A board completed with less than one price kept is reborn for free, and what
+ * Every entry is paid. A board completed with less than one price kept (only possible through rounding of the
+ * reborn shares on a price that does not divide evenly) is reborn for free, and what
  * it did keep goes to the company wallets.
  * Anything else for the company (the root's own referral share, money a board kept but did not use, rounding) is split
  * between the three company wallets in the same proportion as their shares; rounding dust goes to the treasury.
@@ -68,14 +68,13 @@ contract RebornConstant {
     uint256 constant MAX_PACKAGES = 32;
     uint256 constant TREE_NODES = 13;          // nodes returned by getBoardView: 3 levels (1 + 3 + 9)
     uint256 constant MAX_PAGE = 100;           // rows per page in list views
-    uint256 constant MAX_FREE = 50;            // accounts one placeFree() may take
+    uint256 constant MAX_BATCH = 50;           // accounts one registerFor() may take
     uint256 constant AUTO = type(uint256).max; // "pick for me" in getBoardView
 
     // Kind of an ID (Position.kind, Job.kind)
     uint8 constant SIGN_UP = 0;
     uint8 constant UPGRADE = 1;
     uint8 constant REBORN = 2;
-    uint8 constant FREE = 3;
 
     // History rows (HistoryRow.kind). A new ID of the member, a referral share, or a slot below one of the member's IDs.
     uint8 constant H_NEW_ID = 0;
@@ -108,7 +107,7 @@ contract RebornConstant {
     error QueueIsEmpty(); // "Queue Is Empty"
     error ZeroSteps(); // "Zero Steps"
     error AlreadyAMember(); // "Already A Member"
-    error FreeCount(); // "Free Count"
+    error BatchCount(); // "Batch Count"
     error NoRecipients(); // "No Recipients"
     error NothingToSend(); // "Nothing To Send"
     error ZeroRecipient(); // "Zero Recipient"
@@ -143,7 +142,7 @@ contract RebornStorage is RebornConstant {
         uint64 parent;          // index of the ID above (the root points at itself)
         uint8 filled;           // 0..3 slots below are taken
         uint8 openDepth;        // levels down to the nearest open slot (0 = this ID has one)
-        uint8 kind;             // SIGN_UP, UPGRADE, REBORN or FREE
+        uint8 kind;             // SIGN_UP, UPGRADE or REBORN
         uint64[3] kids;         // index in each slot (valid below `filled`)
         uint256 fund;           // reborn money kept on this board
     }
@@ -153,18 +152,18 @@ contract RebornStorage is RebornConstant {
      *   word 0: time (40 bits) | block (40) | kind (8) | pkg (8) | slot (8) | idKind (8) | other (64) | index (64)
      *   word 1: ref (64) | amount (96) | extra (96)
      * H_NEW_ID   index = the new ID, ref = ID above it, slot = slot it took, other = owner of the ID above,
-     *            amount = price paid (sign-up/upgrade from the wallet, reborn from the money kept, 0 when free),
-     *            extra = board that completed (reborn only). idKind = SIGN_UP, UPGRADE, REBORN or FREE.
+     *            amount = price paid (sign-up/upgrade by the wallet or the owner, reborn from the money kept, 0 when unfunded),
+     *            extra = board that completed (reborn only). idKind = SIGN_UP, UPGRADE or REBORN.
      * H_REFERRAL other = the person invited, index = their new ID, amount = referral paid, idKind = kind of that ID.
      * H_SLOT     index = the member's ID, slot = slot filled, other/ref = who and which ID took it, amount = cash paid,
-     *            extra = kept for Reborn, idKind = kind of the ID that took it (free and unfunded reborn pay nothing).
+     *            extra = kept for Reborn, idKind = kind of the ID that took it (an unfunded reborn pays nothing).
      * Packed by hand: the same rows as structs made the contract too big for the 24,576 byte limit.
      */
 
     struct Job {
         uint8 pkg;
         uint8 kind;
-        bool isPaid;            // false for free IDs and unfunded reborns
+        bool isPaid;            // false only for an unfunded reborn
         uint64 member;
         uint256 from;           // board that completed (reborn only)
     }
@@ -215,7 +214,6 @@ contract RebornStorage is RebornConstant {
     uint256 _totalReferral;
     uint256 _totalBoardPaid;
     uint256 _totalCompany;
-    uint256 _totalFree;         // free IDs placed
 
     // Per member and package: the position in _memberPositions of the ID now taking new IDs.
     // It only moves forward: once an ID's first two levels are full they stay full.
@@ -412,32 +410,6 @@ contract RebornMatrix is RebornStorage {
     /* ------------------------------------ what the owner does */
 
     /**
-     * Free IDs for investors, under the root of package `pkg`, before launch only. New accounts become members
-     * with the root as sponsor. Each account gets the package once (like buying it).
-     */
-    function placeFree(address[] calldata accounts, uint256 pkg) public payable onlyOwner {
-        if (_launched) revert AlreadyLaunched();
-        if (pkg == 0 || pkg > _packageCount) revert UnknownPackage();
-        uint256 count = accounts.length;
-        if (count == 0 || count > MAX_FREE) revert FreeCount();
-        uint8 p = uint8(pkg);
-        for (uint256 i; i < count; i++) {
-            address account = accounts[i];
-            if (account == ZERO) revert ZeroAddress();
-            if (_isCompany(account)) revert RootAndCompanyMustDiffer();
-            uint64 id = _idOf[account];
-            if (id == 0) id = _newMember(account, 1);
-            if (_hasPackage[id][p]) revert AlreadyHasPackage();
-            _hasPackage[id][p] = true;
-            _packages[p].members += 1;
-            _totalFree += 1;
-            emit PackageBought(id, p, 0, FREE);
-            _pushJob(p, FREE, false, id, 0);
-        }
-        _process(_stepsPerTx);
-    }
-
-    /**
      * Paid sign-ups made by the owner for `accounts` (new wallets), package 1 under `sponsorId`, before or after
      * launch. The owner wallet pays package 1's price for each (approve price x count first); the money is split
      * exactly like a member's own sign-up, and the sponsor gets the referral share of every later entry.
@@ -446,14 +418,14 @@ contract RebornMatrix is RebornStorage {
      */
     function registerFor(address[] calldata accounts, uint256 sponsorId) public payable onlyOwner {
         uint256 count = accounts.length;
-        if (count == 0 || count > MAX_FREE) revert FreeCount();
+        if (count == 0 || count > MAX_BATCH) revert BatchCount();
         for (uint256 i; i < count; i++) {
             _signUp(accounts[i], sponsorId);
             _process(_stepsPerTx);
         }
     }
 
-    /** Opens sign-ups to everyone. One way: free placement is closed for good. */
+    /** Opens sign-ups and upgrades to everyone. One way. */
     function launchPublic() public payable onlyOwner {
         if (_launched) revert AlreadyLaunched();
         _launched = true;
@@ -647,11 +619,10 @@ contract RebornMatrix is RebornStorage {
 
     /**
      * The ID a new one goes below: one of whose IDs (the sponsor's, the nearest sponsor's up the line who holds the
-     * package, the member's own, or the root's), then which of them (_entryOf).
+     * package, or the member's own), then which of them (_entryOf).
      */
     function _entryPoint(Job memory job) private returns (uint256) {
         if (job.kind == REBORN) return _entryOf(job.member, job.pkg);
-        if (job.kind == FREE) return _entryOf(1, job.pkg);
         uint64 sponsor = _members[job.member].sponsor;
         if (job.kind == UPGRADE) {
             while (sponsor != 0 && _memberPositions[sponsor][job.pkg].length == 0) sponsor = _members[sponsor].sponsor;
@@ -904,7 +875,6 @@ contract RebornViews is RebornStorage {
         bool launched;
         uint256 stepsPerTx;
         uint256 queued;
-        uint256 totalFree;
         uint256 packageCount;
         uint256 maxPackages;
         uint256 lastPrice;
@@ -1146,7 +1116,6 @@ contract RebornViews is RebornStorage {
         v.launched = _launched;
         v.stepsPerTx = _stepsPerTx;
         v.queued = _jobTail - _jobHead;
-        v.totalFree = _totalFree;
         v.packageCount = _packageCount;
         v.maxPackages = MAX_PACKAGES;
         v.lastPrice = _packages[_packageCount].price;

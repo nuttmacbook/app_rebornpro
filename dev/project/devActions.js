@@ -51,6 +51,7 @@ const join = (count) => async ({ wallet, newWallet, fundGas, fundToken, tokenAs,
 const joinAndUpgrade = (count) => async (tools, progress) => {
     const { wallet, newWallet, fundGas, fundToken, tokenAs, contractAs } = tools;
     const reader = contractAs(Reborn, newWallet());
+    if ((await reader.getHomeView(wallet?.address ?? "0x0000000000000000000000000000000000000000", 0)).packages.length < 2) throw new Error("There is no package 2 yet: add it on the Owner page first.");
     const sponsor = await sponsorOf(reader, wallet);
     for (let i = 1; i <= count; i++) {
         const person = newWallet();
@@ -84,8 +85,8 @@ const becomeOwner = async ({ wallet, contractAs, newWallet, etherjs }, progress)
     progress("Done: this wallet is the owner. Open Owner tools in the footer.");
 };
 
-/** Three brand-new wallet addresses to paste into "Free IDs for investors" (copied to the clipboard) */
-const investorAddresses = async ({ newWallet }, progress) => {
+/** Three brand-new wallet addresses to paste into "Sign up others, paid" (copied to the clipboard) */
+const newAddresses = async ({ newWallet }, progress) => {
     const list = [ newWallet(), newWallet(), newWallet() ].map((w) => w.address).join("\n");
     try { await navigator.clipboard.writeText(list); } catch {}
     console.log(list);
@@ -94,7 +95,7 @@ const investorAddresses = async ({ newWallet }, progress) => {
 
 const devActions = [
     { label: "Make me the contract owner", run: becomeOwner },
-    { label: "Copy 3 investor addresses", run: investorAddresses },
+    { label: "Copy 3 new wallet addresses", run: newAddresses },
     { label: "3 people join under me", run: join(3) },
     { label: "12 people join under me", run: join(12) },
     { label: "3 join under me + buy package 2", run: joinAndUpgrade(3) },

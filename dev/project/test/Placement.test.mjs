@@ -3,13 +3,13 @@
  *   - the example from the marketing picture
  *   - once ID 1's 3 + 9 slots are full, the sponsor's next people go below 1.1
  *   - an upgrade looks up the sponsor line for a place, while the referral stays with the sponsor from sign-up
- *   - a board with free IDs completed by a paid one (reborn for free, kept money to the company)
+ *   - the planned start: the owner pays for 3 sign-ups under the root; every board completes with one price kept
  *   - a 400-level deep line: gas per sign-up stays flat
  */
 
 import { ethers } from "ethers";
 import { TX_GAS } from "../../engine/node.mjs";
-import { deployReborn } from "../reborn.mjs";
+import { deployReborn, withLaterPackages } from "../reborn.mjs";
 import { newPerson } from "../seed.mjs";
 import { planOf } from "../plan.mjs";
 
@@ -29,7 +29,7 @@ export default async function (t) {
     const fresh = async ({ launch = true } = {}) => {
         const root = ethers.Wallet.createRandom().address;
         const companies = [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address);
-        const { contract, address } = await deployReborn(owner, contracts, { owner: owner.address, token: deployed.tokens.USDT.address, root, companies, plan: planOf(s) });
+        const { contract, address } = await deployReborn(owner, contracts, { owner: owner.address, token: deployed.tokens.USDT.address, root, companies, plan: withLaterPackages(planOf(s), deployed.tokens.USDT.decimals) });
         if (launch) await (await contract.launchPublic()).wait();
         return { matrix: contract, address, root, companies };
     };
@@ -119,35 +119,23 @@ export default async function (t) {
     const kidParents = await Promise.all(kids.map((k) => parentOf(upMixed, 2, k.id)));
     check("upgrade: 3 go below the sponsor's first ID in that package, then into its 9", kidParents.slice(0, 3).every((p) => p === a2[0]) && kidParents[3] !== a2[0], kidParents.join(","));
 
-    /* ------------------------------------ 3. free IDs then a paid one complete the root's board */
-
-    const mixed = await fresh({ launch: false });
-    await (await mixed.matrix.placeFree([ ethers.Wallet.createRandom().address, ethers.Wallet.createRandom().address ], 1)).wait();
-    await (await mixed.matrix.launchPublic()).wait();
-    const M = await join(mixed, 1);
-    const done = M.receipt.logs.map((l) => { try { return mixed.matrix.interface.parseLog(l); } catch { return null; } }).find((e) => e?.name === "BoardCompleted");
-    const price = (await mixed.matrix.getPackage(1)).price;
-    const plan = planOf(s);
-    const companyTotal = plan.companyBps.reduce((a, b) => a + b, 0n);
-    const expectCompany = price * companyTotal / 10_000n + price * plan.rebornBps[2] / 10_000n;
-    check("mixed board: completed by a paid ID is reborn for free", done && done.args.isPaid === false);
-    const got = await Promise.all(mixed.companies.map((w) => token.balanceOf(w)));
-    check("mixed board: the money it kept goes to the company wallets", got.reduce((a, b) => a + b, 0n) === expectCompany, got.map((g) => ethers.formatUnits(g, 18)).join(" / "));
-    check("mixed board: split 50 / 25 / 25 between product, marketing, treasury", got[0] === expectCompany / 2n && got[1] === expectCompany / 4n && got[2] === expectCompany - got[0] - got[1]);
-    check("mixed board: the root still got its cash and the referral", (await token.balanceOf(mixed.root)) === price * (plan.cashBps[2] + plan.referralBps) / 10_000n);
-    const [ held ] = await totals(mixed.matrix);
-    check("mixed board: nothing left in the contract", held === 0n && (await token.balanceOf(mixed.address)) === 0n);
-
-    /* ------------------------------------ 3b. the planned start: 3 free IDs under the root in every package */
+    /* ------------------------------------ 3. the planned start: the owner pays for 3 sign-ups under the root */
 
     const start = await fresh({ launch: false });
+    const plan = planOf(s);
+    const price = (await start.matrix.getPackage(1)).price;
     const investors = [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address);
-    for (let pkg = 1; pkg <= 3; pkg++) await (await start.matrix.placeFree(investors, pkg)).wait();
-    const rootBefore = await Promise.all([ 1, 2, 3 ].map((pkg) => start.matrix.positionsOf(1, pkg)));
-    check("planned start: the root's board in every package is reborn (for free) before launch", rootBefore.every((l) => l.length === 2));
-    const rebornSlot = await start.matrix.getPosition(1, rootBefore[0][1]);
+    await (await token.connect(owner).mint(owner.address, price * 3n)).wait();
+    await (await token.connect(owner).approve(start.address, price * 3n)).wait();
+    const setupBlock = await provider.getBlockNumber();
+    await (await start.matrix.registerFor(investors, 1, { gasLimit: TX_GAS })).wait();
+    const rootBefore = await start.matrix.positionsOf(1, 1);
+    check("planned start: the 3 paid sign-ups complete the root's board, the root is reborn before launch", rootBefore.length === 2);
+    const rebornSlot = await start.matrix.getPosition(1, rootBefore[1]);
     const inv1 = await start.matrix.idOf(investors[0]);
-    check("planned start: the root's free Reborn takes slot 1 of investor 1 (slot 1 keeps nothing for Reborn)", Number(rebornSlot.parent) === Number((await start.matrix.positionsOf(inv1, 1))[0]));
+    check("planned start: the root's Reborn takes slot 1 of the first wallet", Number(rebornSlot.parent) === Number((await start.matrix.positionsOf(inv1, 1))[0]));
+    const rootPaid = price * (plan.cashBps[0] + plan.cashBps[1] + plan.cashBps[2] + 3n * plan.referralBps) / 10_000n;
+    check("planned start: the root got the cash of its 3 slots and 3 referrals", (await token.balanceOf(start.root)) >= rootPaid, ethers.formatUnits(await token.balanceOf(start.root), 18));
     const launchBlock = await provider.getBlockNumber();
     await (await start.matrix.launchPublic()).wait();
     const people = [];
@@ -158,11 +146,11 @@ export default async function (t) {
         if (i % 3 === 0) await buy(start, p.wallet, 2);
         if (i % 9 === 0) await buy(start, p.wallet, 3);
     }
-    const completed = await start.matrix.queryFilter(start.matrix.filters.BoardCompleted(), launchBlock + 1);
+    const completed = await start.matrix.queryFilter(start.matrix.filters.BoardCompleted(), setupBlock + 1);
     const short = completed.filter((e) => e.args.isPaid === false);
-    check("planned start: after launch every board completes with exactly one price kept (none short)", completed.length > 0 && short.length === 0, `${completed.length} boards completed, ${short.length} short`);
-    const freeAfter = (await start.matrix.queryFilter(start.matrix.filters.Placed(), launchBlock + 1)).filter((e) => Number(e.args.kind) === 3);
-    check("planned start: no free ID is placed after launch", freeAfter.length === 0);
+    check("planned start: every board completes with one price kept, no free reborn (all entries pay)", completed.length > 0 && short.length === 0, `${completed.length} boards completed, ${short.length} short`);
+    const afterLaunch = completed.filter((e) => e.blockNumber > launchBlock);
+    check("planned start: boards keep completing after launch", afterLaunch.length > 0, `${afterLaunch.length} after launch`);
     const [ startHeld ] = await totals(start.matrix);
     check("planned start: money still adds up (held = token balance)", startHeld === (await token.balanceOf(start.address)));
 

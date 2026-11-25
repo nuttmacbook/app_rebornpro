@@ -1,6 +1,6 @@
 /*
  * YOUR CODE (on-chain tests). The history the contract keeps per member (getHistoryView):
- *   - every row decodes to what happened: free IDs, sign-ups, referral, each slot's cash and kept money, reborns
+ *   - every row decodes to what happened: owner-paid sign-ups, sign-ups, referral, each slot's cash and kept money, reborns
  *   - per member, referral rows add up to referralEarned, slot rows to boardEarned, new-ID rows to the IDs held
  *   - newest first, pages join up without gaps, the page size is capped, a stranger gets an empty view
  *   - the history follows the account through transferWallet
@@ -8,12 +8,12 @@
 
 import { ethers } from "ethers";
 import { TX_GAS } from "../../engine/node.mjs";
-import { deployReborn } from "../reborn.mjs";
+import { deployReborn, withLaterPackages } from "../reborn.mjs";
 import { newPerson } from "../seed.mjs";
 import { planOf } from "../plan.mjs";
 
 const NEW_ID = 0, REFERRAL = 1, SLOT = 2;
-const SIGN_UP = 0, UPGRADE = 1, REBORN = 2, FREE = 3;
+const SIGN_UP = 0, UPGRADE = 1, REBORN = 2;
 
 /** Same layout as the comment above HistoryRow in RebornMatrix.sol (two words per row) */
 const decode = (words) => {
@@ -37,7 +37,7 @@ export default async function (t) {
 
     const root = ethers.Wallet.createRandom().address;
     const companies = [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address);
-    const { contract: matrix, address } = await deployReborn(owner, contracts, { owner: owner.address, token: deployed.tokens.USDT.address, root, companies, plan: planOf(s) });
+    const { contract: matrix, address } = await deployReborn(owner, contracts, { owner: owner.address, token: deployed.tokens.USDT.address, root, companies, plan: withLaterPackages(planOf(s), deployed.tokens.USDT.decimals) });
     const price = async (pkg) => (await matrix.getPackage(pkg)).price;
     const bps = (v, b) => v * BigInt(b) / 10_000n;
     const plan = planOf(s);
@@ -61,27 +61,32 @@ export default async function (t) {
         return { wallet, receipt, id: Number(await matrix.idOf(wallet.address)) };
     };
 
-    /* ------------------------------------ 1. free IDs before launch */
+    /* ------------------------------------ 1. before launch: the owner pays for 3 sign-ups under the root */
 
+    const p1 = await price(1);
     const investors = [ 1, 2, 3 ].map(() => ethers.Wallet.createRandom().address);
-    await (await matrix.placeFree(investors, 1, { gasLimit: TX_GAS })).wait();
+    await (await token.connect(owner).mint(owner.address, p1 * 3n)).wait();
+    await (await token.connect(owner).approve(address, p1 * 3n)).wait();
+    await (await matrix.registerFor(investors, 1, { gasLimit: TX_GAS })).wait();
+    const kept = plan.rebornBps.reduce((sum, b) => sum + bps(p1, b), 0n);
+    const rebornPaid = kept >= p1 ? p1 : 0n;
     const inv = await historyOf(investors[0]);
     const invIds = inv.rows.filter((r) => r.kind === NEW_ID);
-    check("history: a free ID is one new-ID row, paid nothing", invIds.length === 1 && invIds[0].idKind === FREE && invIds[0].amount === 0n && invIds[0].pkg === 1);
-    // The root's free reborn takes slot 1 of investor 1: a slot row that pays nothing
+    check("history: an owner-paid sign-up is one new-ID row with the price", invIds.length === 1 && invIds[0].idKind === SIGN_UP && invIds[0].amount === p1 && invIds[0].pkg === 1);
+    // The root's reborn takes slot 1 of the first wallet
     const invSlot = inv.rows.filter((r) => r.kind === SLOT);
-    check("history: investor 1 sees the root's free reborn take its slot 1, no pay", invSlot.length === 1 && invSlot[0].slot === 0 && invSlot[0].other === 1 && invSlot[0].idKind === REBORN && invSlot[0].amount === 0n);
-    const rootFree = (await historyOf(root)).rows;
-    const rootSlots = rootFree.filter((r) => r.kind === SLOT);
-    check("history: the root sees its 3 slots taken by free IDs, no pay", rootSlots.length === 3 && rootSlots.every((r) => r.amount === 0n && r.extra === 0n && r.idKind === FREE) && rootSlots.map((r) => r.slot).sort().join() === "0,1,2");
-    const rootReborn = rootFree.find((r) => r.kind === NEW_ID && r.idKind === REBORN);
-    check("history: the root's free reborn is a new-ID row from board 0, paid 0", Boolean(rootReborn) && rootReborn.amount === 0n && rootReborn.extra === 0n);
+    check("history: the first wallet sees the root's reborn take its slot 1", invSlot.length === 1 && invSlot[0].slot === 0 && invSlot[0].other === 1 && invSlot[0].idKind === REBORN && invSlot[0].amount === (rebornPaid ? bps(p1, plan.cashBps[0]) : 0n));
+    const rootStart = (await historyOf(root)).rows;
+    const rootSlots = rootStart.filter((r) => r.kind === SLOT).sort((x, y) => x.slot - y.slot);
+    check("history: the root sees its 3 slots taken by the paid sign-ups, with cash and kept money", rootSlots.length === 3 && rootSlots.every((r, i) => r.idKind === SIGN_UP && r.amount === bps(p1, plan.cashBps[i]) && r.extra === bps(p1, plan.rebornBps[i])));
+    check("history: the root gets a referral row for each of them", rootStart.filter((r) => r.kind === REFERRAL).length === 3);
+    const rootReborn = rootStart.find((r) => r.kind === NEW_ID && r.idKind === REBORN);
+    check("history: the root's reborn is a new-ID row from board 0, paid from the money kept", Boolean(rootReborn) && rootReborn.amount === rebornPaid && rootReborn.extra === 0n);
 
     /* ------------------------------------ 2. A joins, B C D fill A's board */
 
     await (await matrix.launchPublic()).wait();
     const A = await join(1);
-    const p1 = await price(1);
     const aJoin = (await historyOf(A.wallet.address)).rows[0];
     const aPos = await matrix.getPosition(1, aJoin.index);
     const aboveOwner = Number((await matrix.getPosition(1, aJoin.ref)).member);

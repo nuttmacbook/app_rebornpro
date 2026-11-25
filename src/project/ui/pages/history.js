@@ -10,7 +10,7 @@ import { packageName } from "../componants/ring";
  * Link parameters: #/history?addr=0x…&page=2 (no addr = the connected wallet). Times are UTC.
  */
 
-const SIGN_UP = 0, UPGRADE = 1, REBORN = 2, FREE = 3;
+const UPGRADE = 1, REBORN = 2;
 
 const timeOf = (seconds) => (seconds > 0 ? `${new Date(seconds * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" })}` : "");
 
@@ -75,7 +75,7 @@ const newIdRow = (data, r) => {
         iconHtml: icon(isUpgrade ? "up" : "join", "border border-seam text-bone"),
         title: isUpgrade ? t("Bought {name}", { name: escape(packageName(data, r.pkg)) }) : t("Joined {name}", { name: escape(packageName(data, r.pkg)) }),
         lines: [ where ],
-        amounts: r.idKind === FREE ? [] : [ `<span>${t("Price paid")} <b class="figure font-semibold text-bone">${moneyText(data, r.amount)}</b></span>` ],
+        amounts: [ `<span>${t("Price paid")} <b class="figure font-semibold text-bone">${moneyText(data, r.amount)}</b></span>` ],
     });
 };
 

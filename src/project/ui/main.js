@@ -9,7 +9,7 @@
 import "./main.css";
 import { t, setLang } from "../lang";
 import { startApp, openWallet } from "../../engine/ui/app";
-import { getHomeData, getPlanData, getBoardData, getTeamData, getHistoryData, getOwnerData, register, upgrade, processQueue, transferWallet, placeFree, registerFor, launchPublic, addPackage, setPackageOpen } from "../chain";
+import { getHomeData, getPlanData, getBoardData, getTeamData, getHistoryData, getOwnerData, register, upgrade, processQueue, transferWallet, registerFor, launchPublic, addPackage, setPackageOpen } from "../chain";
 import { header } from "./componants/nav";
 import { mountBackdrop } from "./componants/backdrop";
 import { isMaintenance, showMaintenance } from "./componants/maintenance";
@@ -197,12 +197,6 @@ window.doTransferWallet = () => {
 
 /* ------------------------------------ owner */
 
-window.doPlaceFree = () => {
-    const text = document.querySelector("[data-free-wallets]")?.value ?? "";
-    const pkg = Number(document.querySelector("[data-free-package]")?.value ?? 1);
-    app.runTx((wallet, options) => placeFree(wallet, { ...options, text, pkg }), { title: "Free IDs placed", desc: "The investors' IDs are on the board below the root." });
-};
-
 window.doRegisterFor = () => {
     const text = document.querySelector("[data-paid-wallets]")?.value ?? "";
     const typed = String(document.querySelector("[data-paid-sponsor]")?.value ?? "").trim();
@@ -212,7 +206,7 @@ window.doRegisterFor = () => {
 };
 
 window.doLaunch = () => {
-    if (!document.querySelector("[data-launch-sure]")?.checked) return notify.error(new Error("Tick the box first: launching closes free placement for good."));
+    if (!document.querySelector("[data-launch-sure]")?.checked) return notify.error(new Error("Tick the box first: launching opens sign-ups to everyone and cannot be undone."));
     app.runTx(launchPublic, { title: "Launched", desc: "Sign-ups are open to everyone." });
 };
 

@@ -1,6 +1,6 @@
 /*
  * YOUR CODE (on-chain tests). The whole plan on the contract from dev/settings:
- * settings, free investor IDs before launch, many sign-ups and upgrades compared with the JS model after every
+ * settings, package 10 only at deploy, the owner adding 50 and 100 and paying for sign-ups before launch, many sign-ups and upgrades compared with the JS model after every
  * step, queue, new packages, money, views, payable, wallets and a proxy upgrade half way.
  */
 
@@ -9,7 +9,7 @@ import { TX_GAS, deployContract } from "../../engine/node.mjs";
 import { joiner, upgrader, newPerson, payFor } from "../seed.mjs";
 import { planOf, companyWalletsOf } from "../plan.mjs";
 import { RebornModel } from "../model.mjs";
-import { rebornAt } from "../reborn.mjs";
+import { rebornAt, laterPrices } from "../reborn.mjs";
 
 /** Money totals [held, paidIn, referral, boardPaid, company] from the home view (same numbers the site shows) */
 const totals = async (m) => {
@@ -85,34 +85,43 @@ export default async function (t) {
     })());
     const direct = new ethers.Contract(deployed.addresses.RebornViews, contracts.RebornViews.abi, provider);
     check("views: RebornViews called directly sees only its own empty storage", (await direct.memberCount()) === 0n && (await matrix.memberCount()) >= 1n);
-    check("root: holds the top of every package", (await Promise.all([ 1, 2, 3 ].map((p) => matrix.positionsOf(1, p)))).every((l) => l.length === 1 && l[0] === 0n));
+    check("deploy: only package 10 exists (PACKAGE_PRICES)", (await matrix.packageCount()) === 1n && plan.prices.length === 1, s.PACKAGE_PRICES);
+    check("root: holds the top of package 10", (await matrix.positionsOf(1, 1)).join() === "0");
+    check("free IDs: placeFree is gone from the contract", !contracts.RebornMatrix.abi.some((f) => f.name === "placeFree") && !contracts.RebornViews.abi.some((f) => f.name === "placeFree"));
 
-    /* ------------------------------------ 2. before launch: free IDs for investors */
+    /* ------------------------------------ 2. before launch: the owner adds 50 and 100, then pays for sign-ups */
 
     const early = await newPerson(provider);
     check("before launch: register is refused", await doesRevert(() => matrix.connect(early).register.staticCall(1), "NotLaunched"));
-    check("before launch: a stranger cannot place free IDs", await doesRevert(() => matrix.connect(stranger).placeFree.staticCall([ early.address ], 1), "OnlyOwner"));
-    check("placeFree: a company wallet is refused", await doesRevert(() => matrix.placeFree.staticCall([ companies[1] ], 1), "RootAndCompanyMustDiffer"));
+    check("before launch: upgrade is refused", await doesRevert(() => matrix.connect(early).upgrade.staticCall(2), "NotLaunched"));
+    for (const price of laterPrices(decimals)) {
+        await (await matrix.addPackage(price)).wait();
+        model.addPackage(price);
+    }
+    check("addPackage: packages 50 and 100 added later, the root at the top of each", (await matrix.packageCount()) === 3n && (await Promise.all([ 2, 3 ].map((p) => matrix.positionsOf(1, p)))).every((l) => l.join() === "0"));
 
-    const investors = await Promise.all([ 1, 2, 3, 4, 5 ].map(() => newPerson(provider)));
-    const freeAddresses = investors.map((w) => w.address);
-    t.gas("placeFree 5 IDs", await (await matrix.placeFree(freeAddresses, 1, { gasLimit: TX_GAS })).wait());
-    model.placeFree(freeAddresses, 1);
-    await (await matrix.placeFree(freeAddresses.slice(0, 2), 3, { gasLimit: TX_GAS })).wait();
-    model.placeFree(freeAddresses.slice(0, 2), 3);
-    check("placeFree: same package twice is refused", await doesRevert(() => matrix.placeFree.staticCall([ freeAddresses[0] ], 1), "AlreadyHasPackage"));
-    check("placeFree: package 3 without 1 and 2 is allowed for investors", await matrix.hasPackage(await matrix.idOf(freeAddresses[0]), 3));
-    check("placeFree: investors have the root as sponsor", (await matrix.getHistoryView(freeAddresses[4], 0, 0)).sponsor === 1n);
-    check("placeFree: no token moved", (await totals(matrix))[0] === 0n && (await Promise.all(companies.map((w) => token.balanceOf(w)))).every((b) => b === 0n));
+    const signUps = await Promise.all([ 1, 2, 3, 4, 5 ].map(() => newPerson(provider)));
+    const signUpAddresses = signUps.map((w) => w.address);
+    const cost = plan.prices[0] * BigInt(signUpAddresses.length);
+    await (await token.connect(owner).mint(owner.address, cost)).wait();
+    await (await token.connect(owner).approve(deployed.addresses.RebornMatrix, cost)).wait();
+    check("before launch: a stranger cannot sign others up", await doesRevert(() => matrix.connect(stranger).registerFor.staticCall(signUpAddresses, 1), "OnlyOwner"));
+    check("registerFor: a company wallet is refused", await doesRevert(() => matrix.registerFor.staticCall([ companies[1] ], 1), "RootAndCompanyMustDiffer"));
+    const ownerBefore = await token.balanceOf(owner.address);
+    t.gas("registerFor 5 wallets", await (await matrix.registerFor(signUpAddresses, 1, { gasLimit: TX_GAS })).wait());
+    model.registerFor(signUpAddresses, 1);
+    check("registerFor: the owner wallet paid 5 x package 10", ownerBefore - (await token.balanceOf(owner.address)) === cost);
+    check("registerFor: they have the root as sponsor", (await matrix.getHistoryView(signUpAddresses[4], 0, 0)).sponsor === 1n);
+    check("registerFor: they hold package 10 only", (await Promise.all(signUpAddresses.map(async (a) => [ await matrix.hasPackage(await matrix.idOf(a), 1), await matrix.hasPackage(await matrix.idOf(a), 2) ]))).every(([ one, two ]) => one && !two));
     const rootBoard = await matrix.getPosition(1, 0);
-    check("placeFree: 3 free IDs complete the root's board, the root is reborn for free", rootBoard.filled === 3n && (await matrix.positionsOf(1, 1)).length === 2);
-    await matchesModel("free IDs placed like the model");
+    check("registerFor: 3 paid sign-ups complete the root's board, the root is reborn", rootBoard.filled === 3n && (await matrix.positionsOf(1, 1)).length === 2);
+    await matchesModel("owner sign-ups like the model");
+    await moneyAddsUp("after the owner's sign-ups");
 
     check("launchPublic: a stranger cannot launch", await doesRevert(() => matrix.connect(stranger).launchPublic.staticCall(), "OnlyOwner"));
     await (await matrix.launchPublic()).wait();
     check("launchPublic: launched", await matrix.launched());
     check("launchPublic: cannot run twice", await doesRevert(() => matrix.launchPublic.staticCall(), "AlreadyLaunched"));
-    check("after launch: free placement is closed for good", await doesRevert(() => matrix.placeFree.staticCall([ early.address ], 2), "AlreadyLaunched"));
 
     /* ------------------------------------ 3. things that must fail */
 
@@ -184,7 +193,7 @@ export default async function (t) {
     const r = await upgrader(deployed, kid.wallet, 2);
     model.upgrade(kid.wallet.address, 2);
     const referralTo = r.logs.map((l) => { try { return matrix.interface.parseLog(l); } catch { return null; } }).find((e) => e?.name === "ReferralPaid" && e.args.from === BigInt(kid.id));
-    check("referral: an upgrade pays the sponsor from sign-up", referralTo?.args?.to === sponsorWallet.wallet.address && (await token.balanceOf(sponsorWallet.wallet.address)) >= before + plan.prices[1] * plan.referralBps / 10_000n);
+    check("referral: an upgrade pays the sponsor from sign-up", referralTo?.args?.to === sponsorWallet.wallet.address && (await token.balanceOf(sponsorWallet.wallet.address)) >= before + (await matrix.getPackage(2)).price * plan.referralBps / 10_000n);
     await matchesModel("after the referral check");
 
     /* ------------------------------------ 6. queue: a small stepsPerTx leaves work for processQueue */
@@ -246,7 +255,7 @@ export default async function (t) {
     const tv = await matrix.getTeamView(people[0].wallet.address, 0, 100);
     check("view: team lists the people sponsored", tv.directsTotal === BigInt(model.members.filter((x) => x?.sponsor === people[0].id).length));
     const ov = await matrix.getOwnerView();
-    check("view: owner view", ov.launched && ov.packageCount === 4n && ov.totalFree === 7n);
+    check("view: owner view", ov.launched && ov.packageCount === 4n && ov.totalFree === undefined);
     for (const [ name, args ] of [ [ "getHomeView", [ viewer.wallet.address, 1 ] ], [ "getBoardView", [ viewer.wallet.address, 1, 0, 0, 100 ] ], [ "getPlanView", [] ], [ "getTeamView", [ people[0].wallet.address, 0, 100 ] ] ]) {
         const gas = await provider.estimateGas({ to: deployed.addresses.RebornMatrix, data: matrix.interface.encodeFunctionData(name, args) });
         check(`view: ${name} gas is far below an RPC's limit`, gas < 5_000_000n, `${gas.toLocaleString()} gas`);

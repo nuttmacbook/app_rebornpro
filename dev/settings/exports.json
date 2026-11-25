@@ -8,7 +8,6 @@
             "upgrade",
             "processQueue",
             "transferWallet",
-            "placeFree",
             "registerFor",
             "launchPublic",
             "addPackage",
@@ -35,12 +34,12 @@
             "QueueIsEmpty",
             "ZeroSteps",
             "AlreadyAMember",
-            "FreeCount",
             "TransferFailed",
             "UnknownPosition",
             "setViews",
             "views",
-            "ViewsIsNotAContract"
+            "ViewsIsNotAContract",
+            "BatchCount"
         ]
     },
     "RebornViews": {

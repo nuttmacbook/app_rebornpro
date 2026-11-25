@@ -6,7 +6,7 @@
  */
 
 const SLOTS = 3;
-const KIND = { SIGN_UP: 0, UPGRADE: 1, REBORN: 2, FREE: 3 };
+const KIND = { SIGN_UP: 0, UPGRADE: 1, REBORN: 2 };
 
 class RebornModel {
     /**
@@ -66,15 +66,6 @@ class RebornModel {
         this.process(this.steps);
     }
 
-    placeFree(accounts, pkg) {
-        for (const account of accounts) {
-            const id = this.idOf.get(account.toLowerCase()) ?? this.newMember(account, 1);
-            this.members[id].packages.add(pkg);
-            this.queue.push({ pkg, kind: KIND.FREE, isPaid: false, member: id, from: 0 });
-        }
-        this.process(this.steps);
-    }
-
     buy(id, pkg, kind) {
         const price = this.price(pkg);
         this.held += price;
@@ -96,10 +87,9 @@ class RebornModel {
         this.paid.set(account, (this.paid.get(account) ?? 0n) + amount);
     }
 
-    /** Whose IDs a new one goes below: reborn -> own, free -> root, upgrade -> nearest sponsor holding the package */
+    /** Whose IDs a new one goes below: reborn -> own, upgrade -> nearest sponsor holding the package, sign-up -> sponsor */
     entryPoint(job) {
         if (job.kind === KIND.REBORN) return this.entryOf(job.member, job.pkg);
-        if (job.kind === KIND.FREE) return this.entryOf(1, job.pkg);
         let sponsor = this.members[job.member].sponsor;
         if (job.kind === KIND.UPGRADE) {
             while (sponsor !== 0 && !this.mine[sponsor][job.pkg].length) sponsor = this.members[sponsor].sponsor;

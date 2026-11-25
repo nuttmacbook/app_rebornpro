@@ -8,12 +8,12 @@ import { readableRevert } from "../revertText";
 import { t } from "../../lang";
 
 /*
- * YOUR CODE (on-chain). What only the contract owner can do: free IDs for investors (before launch),
- * paid sign-ups for other wallets (any time), launch, add a package, pause or resume one. Every function checks first, then sends one transaction.
+ * YOUR CODE (on-chain). What only the contract owner can do: paid sign-ups for other wallets (any time),
+ * launch, add a package, pause or resume one. Every function checks first, then sends one transaction.
  */
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
-const MAX_FREE = 50;
+const MAX_BATCH = 50;
 
 /** Addresses from a text box (lines, commas or spaces), duplicates removed in order */
 const parseAddresses = (text) => [ ...new Set(String(text ?? "").split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean)) ];
@@ -48,35 +48,10 @@ const send = async (wallet, onStep, fallback, call) => {
     }
 };
 
-/**
- * Places free IDs for investors under the root of one package. Before launch only.
- *
- * @param {object} wallet  { address, signer } of the owner
- * @param {object} options  { text: addresses, pkg, onStep }
- */
-export async function placeFree(wallet, { text, pkg, onStep = () => {} } = {}) {
-    onStep({ stage: "checking" });
-    const owner = await mustBeOwner(wallet);
-    if (owner.launched) throw new Error("The plan is launched: free IDs can no longer be placed.");
-    const list = parseAddresses(text);
-    if (!list.length) throw new Error("Add at least one investor wallet.");
-    if (list.length > MAX_FREE) throw new Error(t("Up to {max} wallets at a time. Split the list.", { max: MAX_FREE }));
-    const wrong = list.find((a) => !ADDRESS.test(a));
-    if (wrong) throw new Error(t("This is not a wallet address: {value}", { value: wrong }));
-    const companies = owner.companies.map((w) => String(w).toLowerCase());
-    if (list.some((a) => companies.includes(a.toLowerCase()))) throw new Error("A company wallet (product, marketing or treasury) cannot hold a member account.");
-    const p = Number(pkg);
-    if (!Number.isInteger(p) || p < 1 || p > owner.packageCount) throw new Error("That package does not exist.");
-    const views = await Promise.all(list.map((a) => readHomeView(a, 0n, { fresh: true })));
-    const already = list.find((_, i) => views[i].mine[p - 1]?.has);
-    if (already) throw new Error(t("{wallet} already has this package.", { wallet: already }));
-    return send(wallet, onStep, "The free IDs were not placed.", (c) => c.placeFree(list, BigInt(p)));
-}
-
 /** New wallets from a text box: checked here so the owner never signs something that would fail */
 const checkNewWallets = (list, owner) => {
     if (!list.length) throw new Error("Add at least one wallet.");
-    if (list.length > MAX_FREE) throw new Error(t("Up to {max} wallets at a time. Split the list.", { max: MAX_FREE }));
+    if (list.length > MAX_BATCH) throw new Error(t("Up to {max} wallets at a time. Split the list.", { max: MAX_BATCH }));
     const wrong = list.find((a) => !ADDRESS.test(a));
     if (wrong) throw new Error(t("This is not a wallet address: {value}", { value: wrong }));
     const companies = owner.companies.map((w) => String(w).toLowerCase());

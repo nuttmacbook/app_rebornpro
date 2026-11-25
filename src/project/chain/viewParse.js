@@ -131,7 +131,6 @@ const toOwnerView = (v) => ({
     launched: Boolean(v?.launched),
     stepsPerTx: num(v?.stepsPerTx),
     queued: num(v?.queued),
-    totalFree: num(v?.totalFree),
     packageCount: num(v?.packageCount),
     maxPackages: num(v?.maxPackages),
     lastPrice: big(v?.lastPrice),

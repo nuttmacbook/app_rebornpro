@@ -64,7 +64,7 @@ function planOf(s) {
 const LAUNCH_FILE = new URL("../settings/launch.json", import.meta.url);
 
 /**
- * dev/settings/launch.json, checked: owner, free ID wallets and packages, paid sign-up wallets and sponsor.
+ * dev/settings/launch.json, checked: owner, paid sign-up wallets (in order) and their sponsor.
  * Stops with the file name when an address is wrong, repeats, or is the root or a company wallet.
  */
 function launchOf(s) {
@@ -72,21 +72,18 @@ function launchOf(s) {
     const raw = JSON.parse(fs.readFileSync(LAUNCH_FILE, "utf8"));
     const addr = (a, where) => { try { return ethers.getAddress(a); } catch { return fail2(`${where} has "${a}", not a wallet address (check the letters).`); } };
     const owner = addr(raw.owner, "owner");
-    const free = (raw.freeIds?.wallets ?? []).map((a) => addr(a, "freeIds"));
-    const packages = (raw.freeIds?.packages ?? []).map(Number);
     const paid = (raw.paidSignUps?.wallets ?? []).map((a) => addr(a, "paidSignUps"));
     const sponsor = Number(raw.paidSignUps?.sponsor ?? 1);
     const taken = new Set([ s.ROOT_WALLET, ...companyWalletsOf(s) ].map((a) => a.toLowerCase()));
     const seen = new Set();
-    for (const a of [ ...free, ...paid ]) {
+    for (const a of paid) {
         if (taken.has(a.toLowerCase())) fail2(`${a} is the root or a company wallet (RebornMatrix.env).`);
         if (seen.has(a.toLowerCase())) fail2(`${a} is listed twice.`);
         seen.add(a.toLowerCase());
     }
-    if (free.length > 50 || paid.length > 50) fail2("at most 50 wallets per list (one transaction each).");
-    if (packages.some((p) => !Number.isInteger(p) || p < 1)) fail2("freeIds.packages must be package numbers (1, 2, 3...).");
+    if (paid.length > 50) fail2("at most 50 wallets (one transaction).");
     if (!Number.isInteger(sponsor) || sponsor < 1) fail2("paidSignUps.sponsor must be a member id (1 = root).");
-    return { owner, free, packages, paid, sponsor };
+    return { owner, paid, sponsor };
 }
 
 export { planOf, launchOf, COMPANY_KEYS, companyWalletsOf };

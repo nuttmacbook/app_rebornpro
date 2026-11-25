@@ -536,11 +536,6 @@ export const RebornViewsContract = {
                         },
                         {
                             "internalType": "uint256",
-                            "name": "totalFree",
-                            "type": "uint256"
-                        },
-                        {
-                            "internalType": "uint256",
                             "name": "packageCount",
                             "type": "uint256"
                         },
