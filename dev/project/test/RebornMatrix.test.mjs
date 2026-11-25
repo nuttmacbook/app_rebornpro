@@ -252,6 +252,10 @@ export default async function (t) {
     const focus = await matrix.getPosition(1, bv.focus);
     const kidsOk = bv.nodes.slice(1, 4).every((n, i) => (i < Number(focus.filled) ? n.exists && n.index === focus.kids[i] : !n.exists));
     check("view: board opens the viewer's newest ID with its 3 slots", bv.focus === myList[myList.length - 1] && kidsOk);
+    const owned = await matrix.getHistoryView(viewer.wallet.address, 0, 0);
+    const dt = bv.detail;
+    check("view: board detail = the focus ID's fund and its owner's numbers", dt.fund === focus.fund && dt.ownerIds === BigInt(myList.length) && dt.sponsor === owned.sponsor && dt.ownerCycles === owned.cycles && dt.ownerBoardEarned === owned.boardEarned && dt.ownerReferralEarned === owned.referralEarned && dt.sponsorAccount.toLowerCase() === model.members[Number(owned.sponsor)].account);
+    check("view: board detail carries the slot split", dt.cashBps.join() === plan.cashBps.join() && dt.rebornBps.join() === plan.rebornBps.join());
     const tv = await matrix.getTeamView(people[0].wallet.address, 0, 100);
     check("view: team lists the people sponsored", tv.directsTotal === BigInt(model.members.filter((x) => x?.sponsor === people[0].id).length));
     const ov = await matrix.getOwnerView();

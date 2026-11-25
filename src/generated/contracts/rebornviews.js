@@ -157,6 +157,68 @@ export const RebornViewsContract = {
                             "internalType": "uint256[]",
                             "name": "prices",
                             "type": "uint256[]"
+                        },
+                        {
+                            "components": [
+                                {
+                                    "internalType": "uint256",
+                                    "name": "fund",
+                                    "type": "uint256"
+                                },
+                                {
+                                    "internalType": "uint256[3]",
+                                    "name": "cashBps",
+                                    "type": "uint256[3]"
+                                },
+                                {
+                                    "internalType": "uint256[3]",
+                                    "name": "rebornBps",
+                                    "type": "uint256[3]"
+                                },
+                                {
+                                    "internalType": "uint256",
+                                    "name": "sponsor",
+                                    "type": "uint256"
+                                },
+                                {
+                                    "internalType": "address",
+                                    "name": "sponsorAccount",
+                                    "type": "address"
+                                },
+                                {
+                                    "internalType": "uint256",
+                                    "name": "ownerIds",
+                                    "type": "uint256"
+                                },
+                                {
+                                    "internalType": "uint256",
+                                    "name": "ownerCycles",
+                                    "type": "uint256"
+                                },
+                                {
+                                    "internalType": "uint256",
+                                    "name": "ownerDirects",
+                                    "type": "uint256"
+                                },
+                                {
+                                    "internalType": "uint256",
+                                    "name": "ownerJoinedAt",
+                                    "type": "uint256"
+                                },
+                                {
+                                    "internalType": "uint256",
+                                    "name": "ownerBoardEarned",
+                                    "type": "uint256"
+                                },
+                                {
+                                    "internalType": "uint256",
+                                    "name": "ownerReferralEarned",
+                                    "type": "uint256"
+                                }
+                            ],
+                            "internalType": "struct RebornViews.Detail",
+                            "name": "detail",
+                            "type": "tuple"
                         }
                     ],
                     "internalType": "struct RebornViews.BoardView",

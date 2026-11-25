@@ -152,6 +152,18 @@ window.doUpgrade = (pkg) => {
 
 window.doProcessQueue = () => app.runTx(processQueue, { title: "Placed", desc: "The waiting IDs are on their boards." });
 
+/** Copy button next to a short address: the full address goes to the clipboard */
+window.copyAddress = async (value, button) => {
+    try {
+        await navigator.clipboard.writeText(value);
+        notify.success({ title: "Address copied", desc: value });
+    } catch (err) {
+        console.error(err);
+        notify.error(new Error("Could not copy. Hover the address to see it in full."));
+    }
+    button?.blur?.();
+};
+
 window.copyRefLink = async () => {
     const link = document.querySelector("[data-ref-link]")?.textContent?.trim() ?? "";
     try {

@@ -834,6 +834,22 @@ contract RebornViews is RebornStorage {
         uint256[] myKinds;
         uint256[] myCounts;     // viewer's IDs in each package
         uint256[] prices;
+        Detail detail;          // more about the focus ID and its owner
+    }
+
+    /** The focus ID's money and its owner's numbers, for the board page's detail panel */
+    struct Detail {
+        uint256 fund;           // kept on this board for its Reborn so far
+        uint256[3] cashBps;     // what each slot pays the owner in cash
+        uint256[3] rebornBps;   // what each slot keeps for the Reborn
+        uint256 sponsor;        // owner's sponsor (member id, 0 for the root)
+        address sponsorAccount;
+        uint256 ownerIds;       // owner's IDs in this package
+        uint256 ownerCycles;    // boards the owner completed, all packages
+        uint256 ownerDirects;
+        uint256 ownerJoinedAt;
+        uint256 ownerBoardEarned;
+        uint256 ownerReferralEarned;
     }
 
     struct Direct {
@@ -1024,6 +1040,25 @@ contract RebornViews is RebornStorage {
         v.focus = index;
         v.parent = index == 0 ? AUTO : _positions[p][index].parent;
         v.nodes = _subtree(p, index);
+        v.detail = _detail(p, index);
+    }
+
+    function _detail(uint8 pkg, uint256 index) private view returns (Detail memory d) {
+        Position storage spot = _positions[pkg][index];
+        Member storage owner_ = _members[spot.member];
+        d.fund = spot.fund;
+        for (uint256 s; s < 3; s++) {
+            d.cashBps[s] = _cashBps[s];
+            d.rebornBps[s] = _rebornBps[s];
+        }
+        d.sponsor = owner_.sponsor;
+        d.sponsorAccount = _members[owner_.sponsor].account;
+        d.ownerIds = _memberPositions[spot.member][pkg].length;
+        d.ownerCycles = owner_.cycles;
+        d.ownerDirects = owner_.directs;
+        d.ownerJoinedAt = owner_.joinedAt;
+        d.ownerBoardEarned = owner_.boardEarned;
+        d.ownerReferralEarned = owner_.referralEarned;
     }
 
     /** Rows of a page: `limit` (at most MAX_PAGE) from `offset`, fewer at the end of the list */

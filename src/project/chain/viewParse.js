@@ -85,6 +85,21 @@ const toNode = (n) => ({
     createdAt: num(n?.createdAt),
 });
 
+/** BoardView.detail: the focus ID's money and its owner's numbers */
+const toDetail = (d) => ({
+    fund: big(d?.fund),
+    cashBps: listOf(d?.cashBps).map(num),
+    rebornBps: listOf(d?.rebornBps).map(num),
+    sponsor: num(d?.sponsor),
+    sponsorAccount: d?.sponsorAccount ?? ZERO,
+    ownerIds: num(d?.ownerIds),
+    ownerCycles: num(d?.ownerCycles),
+    ownerDirects: num(d?.ownerDirects),
+    ownerJoinedAt: num(d?.ownerJoinedAt),
+    ownerBoardEarned: big(d?.ownerBoardEarned),
+    ownerReferralEarned: big(d?.ownerReferralEarned),
+});
+
 /** getBoardView(viewer, pkg, index, offset, limit); `parent` is null at the root */
 const toBoardView = (v) => {
     const parent = big(v?.parent);
@@ -104,6 +119,7 @@ const toBoardView = (v) => {
         myKinds: listOf(v?.myKinds).map(num),
         myCounts: listOf(v?.myCounts).map(num),
         prices: listOf(v?.prices).map(big),
+        detail: toDetail(v?.detail),
     };
 };
 
