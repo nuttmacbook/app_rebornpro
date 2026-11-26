@@ -3,9 +3,9 @@
     "bsc": {
         "chainId": 56,
         "contracts": {
-            "RebornViews": "0x465B8E12bee320519f8c076748eDf79415a68b83",
-            "RebornMatrixImplementation": "0xC331288057a59bAf61876ccf7C9b90a4ede40521",
-            "RebornMatrix": "0x4A2897641459A9705Ab1b3dD42245587B49c9645"
+            "RebornViews": "0x705a80B343e5Dc2479Bf9516b312E57F6264618A",
+            "RebornMatrixImplementation": "0x7958592E8eB0F98190bC1D2F056195a50cb5d818",
+            "RebornMatrix": "0x7fc4565502C6EE1BC8769d47e2cb9c76BB5185E0"
         }
     },
     "launch": 2
