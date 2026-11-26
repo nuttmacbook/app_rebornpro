@@ -52,7 +52,8 @@ const captureRef = () => {
     try { localStorage.setItem(REF_KEY, String(fromLink)); } catch {}
     if (url.searchParams.has("ref")) {
         url.searchParams.delete("ref");
-        history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+        // window.history: the bare name `history` here is the History page imported above
+        try { window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash); } catch {}
     }
 };
 
